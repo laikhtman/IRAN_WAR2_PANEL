@@ -178,10 +178,15 @@ export async function registerRoutes(
       }
 
       console.log("[webhook/rss] Received payload type:", typeof body, "keys:", body ? Object.keys(body) : "null");
+      // Dump full payload to file for debugging
+      const fs = await import("fs");
+      fs.writeFileSync("/tmp/rss_webhook_payload.json", JSON.stringify(body, null, 2));
+      console.log("[webhook/rss] Full payload dumped to /tmp/rss_webhook_payload.json");
       const count = await processRSSWebhook(body);
       res.json({ ok: true, ingested: count });
     } catch (err: any) {
       console.error("[webhook/rss] Error:", err.message);
+      console.error("[webhook/rss] Stack:", err.stack);
       res.status(500).json({ error: "Failed to process webhook" });
     }
   });
