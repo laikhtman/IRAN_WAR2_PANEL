@@ -9,17 +9,15 @@ interface NewsTickerProps {
 
 export function NewsTicker({ news }: NewsTickerProps) {
   const { t } = useTranslation();
+  const tickerRef = useRef<HTMLDivElement>(null);
+  const [animDuration, setAnimDuration] = useState(30);
+
   const breakingNews = news.filter(n => n.breaking);
   const displayNews = breakingNews.length > 0 ? breakingNews : news.slice(0, 5);
-
-  if (displayNews.length === 0) return null;
 
   const tickerContent = displayNews.map(item => (
     `${item.source}: ${item.title}`
   )).join("  \u00B7\u00B7\u00B7  ");
-
-  const tickerRef = useRef<HTMLDivElement>(null);
-  const [animDuration, setAnimDuration] = useState(30);
 
   useEffect(() => {
     if (tickerRef.current) {
@@ -29,6 +27,8 @@ export function NewsTicker({ news }: NewsTickerProps) {
       setAnimDuration(duration);
     }
   }, [tickerContent]);
+
+  if (displayNews.length === 0) return null;
 
   return (
     <div className="w-full border-t border-red-500/30 bg-red-500/5" data-testid="news-ticker" role="marquee" aria-live="off" aria-label="Breaking news ticker">
