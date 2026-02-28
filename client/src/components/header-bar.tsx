@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Shield, Radio, Wifi, WifiOff, Activity, Volume2, VolumeX, Maximize2, Minimize2, TrendingDown, TrendingUp, Minus, HeartPulse } from "lucide-react";
+import { Radio, Wifi, WifiOff, Activity, Volume2, VolumeX, Maximize2, Minimize2, TrendingDown, TrendingUp, Minus, HeartPulse } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Link } from "wouter";
 import type { WsStatus } from "@/hooks/use-connection-status";
@@ -62,9 +62,7 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
   // Shared sub-components
   const shieldTitle = (
     <div className="flex items-center gap-2">
-      <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center glow-cyan">
-        <Shield className="w-3.5 h-3.5 text-primary" />
-      </div>
+      <img src="/icons/logo-lion.svg" alt="War Panel" className="w-7 h-7 rounded-md" />
       <div>
         <h1 className="text-[13px] font-bold text-foreground tracking-[0.1em] uppercase leading-none">
           {t("header.title")}

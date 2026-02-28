@@ -68,7 +68,10 @@ export default function AdminPanel() {
       <aside className="w-60 bg-slate-900 border-r border-slate-800 flex flex-col">
         <div className="p-4">
           <Link href={ADMIN_PATH}>
-            <span className="text-xl font-bold text-red-500 cursor-pointer">⚔ War Panel</span>
+            <div className="flex items-center gap-2 cursor-pointer">
+              <img src="/icons/logo-lion.svg" alt="War Panel" className="w-8 h-8" />
+              <span className="text-lg font-bold text-amber-500">War Panel</span>
+            </div>
           </Link>
           <Badge variant="outline" className="ml-2 text-xs text-slate-400 border-slate-700">Admin</Badge>
         </div>

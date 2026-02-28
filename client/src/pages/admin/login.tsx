@@ -21,7 +21,7 @@ export default function AdminLogin() {
     <div className="min-h-screen flex items-center justify-center bg-[#0a0e14] p-4">
       <Card className="w-full max-w-md bg-slate-900 border-slate-800">
         <CardHeader className="text-center">
-          <div className="text-3xl font-bold text-red-500 mb-2">⚔ War Panel</div>
+          <img src="/icons/logo-lion.svg" alt="War Panel" className="w-16 h-16 mx-auto mb-2" />
           <CardTitle className="text-xl text-slate-200">Admin Panel</CardTitle>
           <CardDescription className="text-slate-400">
             Enter your admin token to continue

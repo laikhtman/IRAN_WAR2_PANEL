@@ -1,4 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="64" fill="#0a0e14"/>
-  <text x="256" y="300" text-anchor="middle" fill="#22d3ee" font-family="system-ui" font-size="200" font-weight="bold">WP</text>
+  <defs>
+    <linearGradient id="maneGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F0C75E"/>
+      <stop offset="50%" stop-color="#D4A843"/>
+      <stop offset="100%" stop-color="#B8892E"/>
+    </linearGradient>
+    <linearGradient id="bodyGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8BD50"/>
+      <stop offset="100%" stop-color="#C49535"/>
+    </linearGradient>
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1a2332"/>
+      <stop offset="100%" stop-color="#0a0e14"/>
+    </radialGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bgGlow)"/>
+  <!-- Signal waves -->
+  <g opacity="0.5" fill="none" stroke="#D4A843" stroke-width="6" stroke-linecap="round">
+    <path d="M340,180 A60,60 0 0,1 340,300" opacity="0.4"/>
+    <path d="M370,155 A90,90 0 0,1 370,325" opacity="0.3"/>
+    <path d="M400,130 A120,120 0 0,1 400,350" opacity="0.2"/>
+  </g>
+  <!-- Lion head + mane -->
+  <g transform="translate(256,256) scale(0.85)" fill="url(#bodyGold)">
+    <path d="M-40,-130 C-80,-140 -130,-120 -150,-80 C-170,-40 -160,0 -140,30 C-120,55 -90,70 -60,75 C-80,50 -95,20 -90,-15 C-85,-50 -65,-90 -40,-110 Z" fill="url(#maneGold)"/>
+    <path d="M-30,-135 C-10,-155 20,-160 50,-140 C80,-120 95,-85 90,-55 C85,-25 70,0 50,15 C70,-10 75,-45 65,-75 C55,-105 30,-125 -10,-130 Z" fill="url(#maneGold)"/>
+    <path d="M-50,-120 C-40,-160 -10,-175 25,-165 C60,-155 80,-130 85,-100 C70,-120 45,-140 15,-145 C-15,-150 -40,-140 -50,-120 Z" fill="url(#maneGold)" opacity="0.9"/>
+    <ellipse cx="20" cy="-40" rx="55" ry="50" fill="url(#bodyGold)"/>
+    <path d="M55,-55 C80,-50 100,-35 105,-15 C108,0 100,10 85,15 C70,20 55,15 45,5 Z" fill="url(#bodyGold)"/>
+    <path d="M50,-10 C70,0 90,15 95,30 C98,42 85,50 70,48 C55,46 42,35 38,20 Z" fill="url(#bodyGold)"/>
+    <path d="M60,-10 C75,-5 88,5 90,15 C85,12 75,5 60,-5 Z" fill="#8B4513" opacity="0.6"/>
+    <circle cx="10" cy="-55" r="6" fill="#0a0e14"/>
+    <circle cx="12" cy="-57" r="2" fill="#F0C75E"/>
+    <ellipse cx="75" cy="-30" rx="5" ry="4" fill="#8B4513" opacity="0.5"/>
+    <path d="M-60,75 C-90,80 -110,100 -105,130 C-100,155 -75,165 -50,160 C-25,155 -10,140 -5,120 C-15,140 -35,150 -55,148 C-75,146 -90,130 -85,110 C-80,90 -65,80 -45,78 Z" fill="url(#maneGold)" opacity="0.8"/>
+    <path d="M-30,60 C-20,80 -5,95 10,100 C25,105 40,100 45,85 C35,95 20,98 5,93 C-10,88 -25,75 -30,60 Z" fill="url(#bodyGold)" opacity="0.7"/>
+    <path d="M-20,-85 C-15,-105 5,-110 15,-95 C10,-100 0,-100 -10,-90 Z" fill="url(#maneGold)"/>
+  </g>
+  <rect width="512" height="512" rx="96" fill="none" stroke="#D4A843" stroke-width="2" opacity="0.15"/>
 </svg>
