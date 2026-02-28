@@ -53,17 +53,17 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
   }, [i18n.language]);
 
   return (
-    <header className="flex items-center justify-between gap-2 px-4 h-10 border-b border-border bg-card/50 flex-shrink-0" data-testid="header-bar">
+    <header className="flex items-center justify-between gap-2 px-4 h-12 border-b border-border bg-card/50 flex-shrink-0" data-testid="header-bar" aria-label="War Panel status bar">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center glow-cyan">
             <Shield className="w-3.5 h-3.5 text-primary" />
           </div>
           <div>
-            <h1 className="text-[11px] font-bold text-foreground tracking-[0.1em] uppercase leading-none">
+            <h1 className="text-[13px] font-bold text-foreground tracking-[0.1em] uppercase leading-none">
               {t("header.title")}
             </h1>
-            <p className="text-[7px] text-muted-foreground tracking-[0.2em] uppercase">
+            <p className="text-[11px] text-muted-foreground tracking-[0.2em] uppercase">
               {t("header.subtitle")}
             </p>
           </div>
@@ -77,7 +77,7 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
           ) : (
             <WifiOff className="w-3 h-3 text-red-400 animate-pulse" />
           )}
-          <span className={`text-[8px] uppercase tracking-wider font-semibold ${
+          <span className={`text-[11px] uppercase tracking-wider font-semibold ${
             wsStatus === "connected" ? "text-emerald-400" :
             wsStatus === "reconnecting" ? "text-yellow-400" : "text-red-400"
           }`}>
@@ -88,7 +88,7 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
 
         <div className="flex items-center gap-1.5">
           <Activity className={`w-3 h-3 ${isLiveFeed ? "text-primary" : "text-muted-foreground"}`} />
-          <span className={`text-[8px] uppercase tracking-wider font-semibold ${
+          <span className={`text-[11px] uppercase tracking-wider font-semibold ${
             isLiveFeed ? "text-primary" : "text-muted-foreground"
           }`}>
             {isLiveFeed ? t("header.liveFeed") : t("header.noData")}
@@ -138,7 +138,7 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
             ) : (
               <Minus className="w-3 h-3 text-yellow-400" />
             )}
-            <span className={`text-[8px] uppercase tracking-wider font-semibold ${
+            <span className={`text-[11px] uppercase tracking-wider font-semibold ${
               sentimentData.trend === "escalating" ? "text-red-400" :
               sentimentData.trend === "de-escalating" ? "text-emerald-400" : "text-yellow-400"
             }`}>
@@ -167,22 +167,22 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
 
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <p className="text-[8px] text-muted-foreground uppercase tracking-wider">{t("header.local")}</p>
-            <p className="text-[11px] font-bold text-foreground tabular-nums leading-none">
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">{t("header.local")}</p>
+            <p className="text-[13px] font-bold text-foreground tabular-nums leading-none">
               {localTimeStr}
             </p>
           </div>
           <div className="h-4 w-px bg-border" />
           <div className="text-right">
-            <p className="text-[8px] text-muted-foreground uppercase tracking-wider">{t("header.israelTime")}</p>
-            <p className="text-[11px] font-bold text-cyan-400 tabular-nums leading-none">
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">{t("header.israelTime")}</p>
+            <p className="text-[13px] font-bold text-cyan-400 tabular-nums leading-none">
               {israelTime}
             </p>
           </div>
           <div className="h-4 w-px bg-border" />
           <div className="text-right">
-            <p className="text-[8px] text-muted-foreground uppercase tracking-wider">{t("header.tehranTime")}</p>
-            <p className="text-[11px] font-bold text-red-400 tabular-nums leading-none">
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">{t("header.tehranTime")}</p>
+            <p className="text-[13px] font-bold text-red-400 tabular-nums leading-none">
               {tehranTime}
             </p>
           </div>
@@ -190,8 +190,8 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
 
         <div className="h-4 w-px bg-border" />
 
-        <Badge variant="outline" className="text-[8px] border-primary/30 text-primary no-default-hover-elevate no-default-active-elevate">
-          <Radio className="w-2.5 h-2.5 mr-1 rtl:ml-1 rtl:mr-0" />
+        <Badge variant="outline" className="text-[11px] border-primary/30 text-primary no-default-hover-elevate no-default-active-elevate">
+          <Radio className="w-2.5 h-2.5 me-1" />
           {dateStr}
         </Badge>
       </div>

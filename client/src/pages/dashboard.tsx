@@ -10,6 +10,8 @@ import { NewsFeed } from "@/components/news-feed";
 import { HeaderBar } from "@/components/header-bar";
 import { LiveMediaPanel } from "@/components/live-media-panel";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
+import { OfflineBanner } from "@/components/offline-banner";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
@@ -129,15 +131,24 @@ export default function Dashboard() {
   // ─── Sidebar panels (shared between desktop sidebar and mobile drawer) ───
   const sidebarContent = (
     <div className="flex flex-col gap-3 p-3">
-      <EventFeed events={uniqueEvents.slice(0, 20)} />
-      <AISummaryPanel summary={aiSummary || null} />
-      <AlertsPanel alerts={alerts || []} />
-      <NewsFeed news={news || []} />
+      <ErrorBoundary fallbackTitle="Events failed">
+        <EventFeed events={uniqueEvents.slice(0, 20)} />
+      </ErrorBoundary>
+      <ErrorBoundary fallbackTitle="AI Summary failed">
+        <AISummaryPanel summary={aiSummary || null} />
+      </ErrorBoundary>
+      <ErrorBoundary fallbackTitle="Alerts failed">
+        <AlertsPanel alerts={alerts || []} />
+      </ErrorBoundary>
+      <ErrorBoundary fallbackTitle="News failed">
+        <NewsFeed news={news || []} />
+      </ErrorBoundary>
     </div>
   );
 
   return (
     <div className="flex flex-col h-screen bg-background grid-overlay" data-testid="dashboard">
+      <OfflineBanner />
       <HeaderBar
         isMuted={isMuted}
         onToggleMute={handleToggleMute}
@@ -180,10 +191,12 @@ export default function Dashboard() {
 
             {/* Desktop: stats sidebar */}
             {!isMobile && (
-              <div className="w-[320px] border-l border-border flex flex-col min-h-0 bg-card/20">
+              <div className="w-[320px] border-l border-border flex flex-col min-h-0 bg-card/20 contain-layout">
                 <ScrollArea className="flex-1">
                   <div className="p-3">
-                    <StatsPanel stats={stats || null} />
+                    <ErrorBoundary fallbackTitle="Stats failed">
+                      <StatsPanel stats={stats || null} />
+                    </ErrorBoundary>
                   </div>
                 </ScrollArea>
               </div>
@@ -197,23 +210,31 @@ export default function Dashboard() {
 
         {/* Desktop: right sidebar with event feed, AI summary, alerts, news */}
         {!isMobile && (
-          <div className="w-[340px] border-l border-border flex flex-col min-h-0 bg-card/10">
+          <div className="w-[340px] border-l border-border flex flex-col min-h-0 bg-card/10 contain-layout">
             <div className="flex-1 flex flex-col min-h-0">
               <div className="h-[45%] border-b border-border p-3">
-                <EventFeed events={uniqueEvents.slice(0, 20)} />
+                <ErrorBoundary fallbackTitle="Events failed">
+                  <EventFeed events={uniqueEvents.slice(0, 20)} />
+                </ErrorBoundary>
               </div>
 
               <div className="flex-1 flex flex-col min-h-0">
                 <div className="border-b border-border p-3 flex-shrink-0">
-                  <AISummaryPanel summary={aiSummary || null} />
+                  <ErrorBoundary fallbackTitle="AI Summary failed">
+                    <AISummaryPanel summary={aiSummary || null} />
+                  </ErrorBoundary>
                 </div>
 
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="h-1/2 border-b border-border p-3">
-                    <AlertsPanel alerts={alerts || []} />
+                    <ErrorBoundary fallbackTitle="Alerts failed">
+                      <AlertsPanel alerts={alerts || []} />
+                    </ErrorBoundary>
                   </div>
                   <div className="h-1/2 p-3">
-                    <NewsFeed news={news || []} />
+                    <ErrorBoundary fallbackTitle="News failed">
+                      <NewsFeed news={news || []} />
+                    </ErrorBoundary>
                   </div>
                 </div>
               </div>

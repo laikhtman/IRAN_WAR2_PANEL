@@ -86,6 +86,14 @@ export default {
         sans: ["var(--font-sans)"],
         serif: ["var(--font-serif)"],
         mono: ["var(--font-mono)"],
+        data: ["'JetBrains Mono'", "'Fira Code'", "monospace"],
+      },
+      fontSize: {
+        "2xs": ["var(--text-xs)", { lineHeight: "1.4" }],
+      },
+      screens: {
+        'tablet': '1024px',
+        'tv': '1920px',
       },
       keyframes: {
         "accordion-down": {

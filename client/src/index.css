@@ -30,7 +30,7 @@
   --secondary: 215 15% 16%;
   --secondary-foreground: 200 20% 88%;
   --muted: 215 12% 14%;
-  --muted-foreground: 215 12% 55%;
+  --muted-foreground: 215 12% 62%;
   --accent: 215 15% 14%;
   --accent-foreground: 200 20% 88%;
   --destructive: 0 72% 50%;
@@ -42,7 +42,7 @@
   --chart-3: 0 72% 50%;
   --chart-4: 45 93% 47%;
   --chart-5: 280 65% 60%;
-  --font-sans: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   --radius: .375rem;
@@ -56,6 +56,14 @@
   --shadow-2xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
+
+  /* Type scale */
+  --text-xs: 0.6875rem;   /* 11px - minimum allowed */
+  --text-sm: 0.8125rem;   /* 13px */
+  --text-base: 0.9375rem; /* 15px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.375rem;    /* 22px */
+  --text-2xl: 1.75rem;    /* 28px */
 
   --sidebar-primary-border: hsl(var(--sidebar-primary));
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
@@ -101,7 +109,7 @@
   --secondary: 215 15% 14%;
   --secondary-foreground: 200 20% 90%;
   --muted: 215 12% 12%;
-  --muted-foreground: 215 12% 50%;
+  --muted-foreground: 215 12% 60%;
   --accent: 215 15% 12%;
   --accent-foreground: 200 20% 90%;
   --destructive: 0 72% 45%;
@@ -207,6 +215,49 @@
     linear-gradient(rgba(0, 180, 255, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 180, 255, 0.03) 1px, transparent 1px);
   background-size: 40px 40px;
+}
+
+/* Accessibility: reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-glow,
+  .animate-scan-line,
+  .animate-ticker,
+  .animate-radar,
+  .animate-blink-alert,
+  .animate-count-up,
+  .animate-pulse {
+    animation: none !important;
+  }
+}
+
+/* Accessibility: focus rings */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* CSS containment for performance */
+.contain-layout {
+  contain: layout style paint;
+}
+
+/* Offline banner */
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  padding: 6px 16px;
+  background: hsl(45 93% 47% / 0.95);
+  color: hsl(220 20% 7%);
+  text-align: center;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  backdrop-filter: blur(4px);
 }
 
 .glow-cyan {

@@ -61,22 +61,22 @@ export function EventFeed({ events }: EventFeedProps) {
   const formatTimeAgo = useFormatTimeAgo();
 
   return (
-    <div className="flex flex-col h-full" data-testid="event-feed">
+    <div className="flex flex-col h-full contain-layout" data-testid="event-feed">
       <div className="flex items-center justify-between gap-1 px-1 mb-2">
-        <h3 className="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">
+        <h3 className="text-[11px] uppercase tracking-[0.2em] text-primary font-bold">
           {t("events.title")}
         </h3>
         <div className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse-glow" />
-          <span className="text-[8px] text-red-400 uppercase tracking-wider font-semibold">{t("events.live")}</span>
+          <span className="text-[11px] text-red-400 uppercase tracking-wider font-semibold">{t("events.live")}</span>
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1" aria-live="polite">
         <div className="space-y-1.5 pr-2">
           {events.length === 0 ? (
             <div className="flex items-center justify-center h-20">
-              <p className="text-[10px] text-muted-foreground">{t("events.noEvents")}</p>
+              <p className="text-[11px] text-muted-foreground">{t("events.noEvents")}</p>
             </div>
           ) : (
             events.map((event) => {
@@ -95,26 +95,26 @@ export function EventFeed({ events }: EventFeedProps) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1 mb-0.5">
-                        <p className="text-[10px] font-semibold text-foreground truncate">
+                        <p className="text-[11px] font-semibold text-foreground truncate">
                           {event.title}
                         </p>
                         <Badge
                           variant="outline"
-                          className={`text-[7px] px-1 py-0 h-3.5 ${threatBadgeVariants[event.threatLevel]} no-default-hover-elevate no-default-active-elevate`}
+                          className={`text-[11px] px-1 py-0 h-3.5 ${threatBadgeVariants[event.threatLevel]} no-default-hover-elevate no-default-active-elevate`}
                         >
                           {t(`events.threat.${event.threatLevel}`)}
                         </Badge>
                       </div>
-                      <p className="text-[9px] text-muted-foreground truncate mb-1">
+                      <p className="text-[11px] text-muted-foreground truncate mb-1">
                         {event.description}
                       </p>
                       <div className="flex items-center justify-between gap-1 flex-wrap">
-                        <span className="text-[8px] text-muted-foreground">
+                        <span className="text-[11px] text-muted-foreground">
                           {event.location} - {t(`countries.${event.country}`, event.country)}
                         </span>
                         <div className="flex items-center gap-2">
-                          <span className="text-[8px] text-muted-foreground">{event.source}</span>
-                          <span className="text-[8px] text-primary tabular-nums">
+                          <span className="text-[11px] text-muted-foreground">{event.source}</span>
+                          <span className="text-[11px] text-primary tabular-nums">
                             {formatTimeAgo(event.timestamp)}
                           </span>
                         </div>

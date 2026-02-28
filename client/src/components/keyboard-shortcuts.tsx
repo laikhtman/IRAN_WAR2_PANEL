@@ -66,8 +66,8 @@ export function KeyboardShortcuts({ onToggleMute, onTogglePresentation }: Keyboa
             </div>
           ))}
         </div>
-        <p className="text-[10px] text-muted-foreground text-center mt-2">
-          Press <kbd className="text-[10px] font-mono border border-border rounded px-1">?</kbd> to toggle this overlay
+        <p className="text-[11px] text-muted-foreground text-center mt-2">
+          Press <kbd className="text-[11px] font-mono border border-border rounded px-1">?</kbd> to toggle this overlay
         </p>
       </DialogContent>
     </Dialog>

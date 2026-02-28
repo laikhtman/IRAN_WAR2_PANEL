@@ -219,7 +219,7 @@ export function LiveMediaPanel() {
           data-testid="media-expand-btn"
         >
           <Tv className="w-3 h-3 text-primary" />
-          <span className="text-[9px] uppercase tracking-[0.15em] text-primary font-semibold">
+          <span className="text-[11px] uppercase tracking-[0.15em] text-primary font-semibold">
             {t("media.title")}
           </span>
           <ChevronUp className="w-3 h-3 text-primary" />
@@ -237,21 +237,21 @@ export function LiveMediaPanel() {
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse-glow" />
               <Radio className="w-3 h-3 text-red-400" />
             </div>
-            <span className="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">
+            <span className="text-[11px] uppercase tracking-[0.2em] text-primary font-bold">
               {t("media.title")}
             </span>
           </div>
 
           <div className="flex-1" />
 
-          <Badge variant="outline" className="text-[8px] border-red-500/30 text-red-400 no-default-hover-elevate no-default-active-elevate">
+          <Badge variant="outline" className="text-[11px] border-red-500/30 text-red-400 no-default-hover-elevate no-default-active-elevate">
             {selectedStreams.length}/4 {t("media.live")}
           </Badge>
 
           <div className="relative">
             <button
               onClick={() => setSelectorOpen((v) => !v)}
-              className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 transition-colors"
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wider bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 transition-colors"
               data-testid="media-selector-btn"
             >
               {t("media.selectChannels")}
@@ -260,14 +260,14 @@ export function LiveMediaPanel() {
 
             {selectorOpen && (
               <div className="absolute end-0 top-full mt-1 z-50 w-[260px] max-h-[320px] overflow-y-auto bg-card border border-border rounded-md shadow-lg p-1.5" data-testid="media-selector-dropdown">
-                <p className="text-[8px] text-muted-foreground uppercase tracking-wider px-1.5 py-1">
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wider px-1.5 py-1">
                   {t("media.selectUpTo3")}
                 </p>
 
                 {/* TV Channels group */}
                 <div className="flex items-center gap-1.5 px-1.5 pt-2 pb-1">
                   <Tv className="w-3 h-3 text-blue-400" />
-                  <span className="text-[8px] font-bold text-blue-400 uppercase tracking-wider">{t("media.tvChannels")}</span>
+                  <span className="text-[11px] font-bold text-blue-400 uppercase tracking-wider">{t("media.tvChannels")}</span>
                 </div>
                 {tvChannels.map((source) => {
                   const isSelected = selectedIds.includes(source.id);
@@ -289,11 +289,11 @@ export function LiveMediaPanel() {
                       <div className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${
                         isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"
                       }`}>
-                        {isSelected && <span className="text-[8px] text-primary-foreground font-bold">✓</span>}
+                        {isSelected && <span className="text-[11px] text-primary-foreground font-bold">✓</span>}
                       </div>
-                      <span className="text-[9px] font-medium truncate">{source.name}</span>
+                      <span className="text-[11px] font-medium truncate">{source.name}</span>
                       {source.language !== "none" && (
-                        <Badge variant="outline" className="text-[6px] px-1 py-0 h-3 ms-auto flex-shrink-0 no-default-hover-elevate no-default-active-elevate">
+                        <Badge variant="outline" className="text-[11px] px-1 py-0 h-3 ms-auto flex-shrink-0 no-default-hover-elevate no-default-active-elevate">
                           {source.language.toUpperCase()}
                         </Badge>
                       )}
@@ -304,7 +304,7 @@ export function LiveMediaPanel() {
                 {/* Live Cameras group */}
                 <div className="flex items-center gap-1.5 px-1.5 pt-3 pb-1 border-t border-border/50 mt-1">
                   <Camera className="w-3 h-3 text-purple-400" />
-                  <span className="text-[8px] font-bold text-purple-400 uppercase tracking-wider">{t("media.liveCameras")}</span>
+                  <span className="text-[11px] font-bold text-purple-400 uppercase tracking-wider">{t("media.liveCameras")}</span>
                 </div>
                 {liveCameras.map((source) => {
                   const isSelected = selectedIds.includes(source.id);
@@ -326,9 +326,9 @@ export function LiveMediaPanel() {
                       <div className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${
                         isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"
                       }`}>
-                        {isSelected && <span className="text-[8px] text-primary-foreground font-bold">✓</span>}
+                        {isSelected && <span className="text-[11px] text-primary-foreground font-bold">✓</span>}
                       </div>
-                      <span className="text-[9px] font-medium truncate">{source.name}</span>
+                      <span className="text-[11px] font-medium truncate">{source.name}</span>
                     </button>
                   );
                 })}
@@ -360,21 +360,22 @@ export function LiveMediaPanel() {
                   allow="autoplay; encrypted-media"
                   referrerPolicy="no-referrer"
                   sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+                  loading="lazy"
                 />
               </div>
               {/* Overlay with name + expand on hover */}
               <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
                 <div className="flex items-center gap-1 p-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse-glow" />
-                  <span className="text-[7px] font-bold text-red-400 uppercase drop-shadow-md">{t("media.live")}</span>
+                  <span className="text-[11px] font-bold text-red-400 uppercase drop-shadow-md">{t("media.live")}</span>
                 </div>
                 <div
                   className="flex items-center justify-between p-1.5 bg-gradient-to-t from-black/70 to-transparent pointer-events-auto cursor-pointer opacity-70 hover:opacity-100 transition-opacity"
                   onClick={() => setExpandedStream(source)}
                 >
                   <div>
-                    <p className="text-[9px] font-semibold text-white truncate drop-shadow-md">{source.name}</p>
-                    <span className="text-[7px] text-white/60">
+                    <p className="text-[11px] font-semibold text-white truncate drop-shadow-md">{source.name}</p>
+                    <span className="text-[11px] text-white/60">
                       {t(`countries.${source.countryKey}`, source.country)}
                     </span>
                   </div>
@@ -410,7 +411,7 @@ export function LiveMediaPanel() {
                 <span id="media-modal-title" className="text-[11px] font-bold text-foreground">
                   {t(`media.${expandedStream.category === "tv" ? "channels" : "cameras"}.${expandedStream.nameKey}`, expandedStream.name)}
                 </span>
-                <span className="text-[9px] text-muted-foreground">
+                <span className="text-[11px] text-muted-foreground">
                   — {t(`countries.${expandedStream.countryKey}`, expandedStream.country)}
                 </span>
               </div>
@@ -431,11 +432,12 @@ export function LiveMediaPanel() {
                 allowFullScreen
                 referrerPolicy="no-referrer"
                 sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+                loading="lazy"
                 data-testid="media-player-iframe"
               />
             </div>
             <div className="px-4 py-2 border-t border-border bg-card/80">
-              <p className="text-[9px] text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground">
                 {t(`media.${expandedStream.category === "tv" ? "channels" : "cameras"}.${expandedStream.nameKey}`, expandedStream.description ?? "")}
               </p>
             </div>

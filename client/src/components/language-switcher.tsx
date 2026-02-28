@@ -24,7 +24,7 @@ export function LanguageSwitcher() {
       <Globe className="w-3 h-3 text-primary" />
       <Select value={i18n.language.split("-")[0]} onValueChange={handleChange}>
         <SelectTrigger
-          className="h-6 w-auto min-w-[80px] text-[9px] bg-card/50 border-border px-2 py-0 gap-1"
+          className="h-6 w-auto min-w-[80px] text-[11px] bg-card/50 border-border px-2 py-0 gap-1"
           data-testid="language-select-trigger"
         >
           <SelectValue />
@@ -34,7 +34,7 @@ export function LanguageSwitcher() {
             <SelectItem
               key={lang.code}
               value={lang.code}
-              className="text-[10px]"
+              className="text-[11px]"
               data-testid={`language-option-${lang.code}`}
             >
               <span className="mr-1.5">{lang.flag}</span>{lang.nativeLabel}

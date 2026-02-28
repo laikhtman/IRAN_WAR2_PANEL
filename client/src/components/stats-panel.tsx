@@ -59,11 +59,11 @@ function AnimatedCounter({ value, label, icon: Icon, color }: {
     <div className={`border border-border rounded-md p-3 bg-card/50 ${glowClasses[color] || ""}`} data-testid={`stat-${label.toLowerCase().replace(/\s/g, '-')}`}>
       <div className="flex items-center gap-2 mb-2">
         <Icon className={`w-3.5 h-3.5 ${colorClasses[color]}`} />
-        <span className="text-[9px] uppercase tracking-[0.15em] text-muted-foreground font-semibold">
+        <span className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground font-semibold">
           {label}
         </span>
       </div>
-      <p className={`text-2xl font-bold tabular-nums ${colorClasses[color]} animate-count-up`}>
+      <p className={`text-2xl font-bold font-mono tabular-nums ${colorClasses[color]} animate-count-up`}>
         {displayValue.toLocaleString()}
       </p>
     </div>
@@ -101,12 +101,12 @@ export function StatsPanel({ stats }: StatsPanelProps) {
   }
 
   return (
-    <div className="space-y-2" data-testid="stats-panel">
+    <div className="space-y-2 contain-layout" role="region" aria-label="Statistics panel" data-testid="stats-panel">
       <div className="flex items-center justify-between gap-1 mb-1">
-        <h3 className="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">
+        <h3 className="text-[11px] uppercase tracking-[0.2em] text-primary font-bold">
           {t("stats.title")}
         </h3>
-        <Badge variant="outline" className="text-[8px] border-primary/30 text-primary">
+        <Badge variant="outline" className="text-[11px] border-primary/30 text-primary">
           {t("stats.live")}
         </Badge>
       </div>
@@ -142,30 +142,30 @@ export function StatsPanel({ stats }: StatsPanelProps) {
         <div className="flex items-center justify-between gap-1">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-[9px] uppercase tracking-[0.15em] text-muted-foreground font-semibold">
+            <span className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground font-semibold">
               {t("stats.interceptionRate")}
             </span>
           </div>
-          <span className="text-xl font-bold text-emerald-400 tabular-nums">
+          <span className="text-xl font-bold font-mono text-emerald-400 tabular-nums">
             {stats.interceptionRate}%
           </span>
         </div>
       </div>
 
       <div className="border border-border rounded-md p-3 bg-card/50">
-        <p className="text-[9px] uppercase tracking-[0.15em] text-muted-foreground font-semibold mb-2">
+        <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground font-semibold mb-2">
           {t("stats.byCountry")}
         </p>
         <div className="space-y-2">
           {Object.entries(stats.byCountry).map(([country, data]) => (
             <div key={country} className="flex items-center justify-between gap-2">
-              <span className="text-[10px] text-foreground font-medium">
+              <span className="text-[11px] text-foreground font-medium">
                 {countryFlags[country] && <span className="mr-1.5">{countryFlags[country]}</span>}
                 {t(`countries.${country}`, country)}
               </span>
               <div className="flex items-center gap-3">
-                <span className="text-[9px] text-red-400 tabular-nums">{data.launched} {t("stats.launched")}</span>
-                <span className="text-[9px] text-emerald-400 tabular-nums">{data.intercepted} {t("stats.int")}</span>
+                <span className="text-[11px] font-mono text-red-400 tabular-nums">{data.launched} {t("stats.launched")}</span>
+                <span className="text-[11px] font-mono text-emerald-400 tabular-nums">{data.intercepted} {t("stats.int")}</span>
               </div>
             </div>
           ))}
@@ -173,14 +173,14 @@ export function StatsPanel({ stats }: StatsPanelProps) {
       </div>
 
       <div className="border border-border rounded-md p-3 bg-card/50">
-        <p className="text-[9px] uppercase tracking-[0.15em] text-muted-foreground font-semibold mb-2">
+        <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground font-semibold mb-2">
           {t("stats.defenseSystems")}
         </p>
         <div className="space-y-1.5">
           {Object.entries(stats.bySystem).map(([system, count]) => (
             <div key={system} className="flex items-center justify-between gap-2">
-              <span className="text-[10px] text-foreground font-medium">{system}</span>
-              <span className="text-[10px] text-cyan-400 tabular-nums font-semibold">{count}</span>
+              <span className="text-[11px] text-foreground font-medium">{system}</span>
+              <span className="text-[11px] font-mono text-cyan-400 tabular-nums font-semibold">{count}</span>
             </div>
           ))}
         </div>
@@ -188,12 +188,12 @@ export function StatsPanel({ stats }: StatsPanelProps) {
 
       <div className="grid grid-cols-2 gap-2">
         <div className="border border-border rounded-md p-2.5 bg-card/50 text-center">
-          <p className="text-[8px] uppercase tracking-[0.15em] text-muted-foreground mb-1">{t("stats.activeAlerts")}</p>
-          <p className="text-lg font-bold text-red-400 tabular-nums">{stats.activeAlerts}</p>
+          <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground mb-1">{t("stats.activeAlerts")}</p>
+          <p className="text-lg font-bold font-mono text-red-400 tabular-nums">{stats.activeAlerts}</p>
         </div>
         <div className="border border-border rounded-md p-2.5 bg-card/50 text-center">
-          <p className="text-[8px] uppercase tracking-[0.15em] text-muted-foreground mb-1">{t("stats.events24h")}</p>
-          <p className="text-lg font-bold text-cyan-400 tabular-nums">{stats.last24hEvents}</p>
+          <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground mb-1">{t("stats.events24h")}</p>
+          <p className="text-lg font-bold font-mono text-cyan-400 tabular-nums">{stats.last24hEvents}</p>
         </div>
       </div>
     </div>

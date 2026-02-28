@@ -59,7 +59,7 @@ export function WarMap({ events, alerts }: WarMapProps) {
   };
 
   return (
-    <div className="relative w-full h-full" data-testid="war-map-container">
+    <div className="relative w-full h-full" data-testid="war-map-container" role="application" aria-label="Interactive war event map">
       <MapContainer
         center={[31.5, 45]}
         zoom={5}
@@ -94,19 +94,19 @@ export function WarMap({ events, alerts }: WarMapProps) {
             }}
           >
             <Popup>
-              <div className="bg-card text-card-foreground p-2 rounded-md min-w-[200px]" style={{ background: "hsl(220, 18%, 10%)", color: "hsl(200, 20%, 92%)" }}>
+              <div className="bg-card text-card-foreground p-2 rounded-md min-w-[200px]">
                 <div className="flex items-center gap-2 mb-1">
                   <span
                     className="w-2 h-2 rounded-full inline-block"
                     style={{ backgroundColor: eventColors[event.type] }}
                   />
-                  <span className="text-[10px] font-bold tracking-wider uppercase" style={{ color: eventColors[event.type] }}>
+                  <span className="text-[11px] font-bold tracking-wider uppercase" style={{ color: eventColors[event.type] }}>
                     {t(`events.types.${event.type}`, event.type)}
                   </span>
                 </div>
                 <p className="text-xs font-semibold mb-1">{event.title}</p>
-                <p className="text-[10px] opacity-70">{event.location}</p>
-                <p className="text-[10px] opacity-50 mt-1">{event.source} - {new Date(event.timestamp).toLocaleTimeString()}</p>
+                <p className="text-[11px] opacity-70">{event.location}</p>
+                <p className="text-[11px] opacity-50 mt-1">{event.source} - {new Date(event.timestamp).toLocaleTimeString()}</p>
               </div>
             </Popup>
           </CircleMarker>
@@ -127,10 +127,10 @@ export function WarMap({ events, alerts }: WarMapProps) {
             }}
           >
             <Popup>
-              <div style={{ background: "hsl(220, 18%, 10%)", color: "hsl(200, 20%, 92%)", padding: "8px", borderRadius: "4px" }}>
-                <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider">{t("alerts.active", { count: 1 })}</p>
+              <div className="bg-card text-card-foreground p-2 rounded">
+                <p className="text-[11px] font-bold text-red-400 uppercase tracking-wider">{t("alerts.active", { count: 1 })}</p>
                 <p className="text-xs font-semibold">{alert.area}</p>
-                <p className="text-[10px] opacity-70">{alert.threat}</p>
+                <p className="text-[11px] opacity-70">{alert.threat}</p>
               </div>
             </Popup>
           </CircleMarker>
@@ -149,14 +149,14 @@ export function WarMap({ events, alerts }: WarMapProps) {
         ))}
       </MapContainer>
 
-      <div className="absolute top-3 left-3 z-[1000] pointer-events-none">
+      <div className="absolute top-3 ltr:left-3 rtl:right-3 z-[1000] pointer-events-none contain-layout">
         <div className="bg-card/90 backdrop-blur-sm border border-border rounded-md p-2.5">
-          <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-2 font-semibold">{t("map.legend")}</p>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground mb-2 font-semibold">{t("map.legend")}</p>
           <div className="space-y-1">
             {Object.keys(eventLabelKeys).map((key) => (
               <div key={key} className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: eventColors[key] }} />
-                <span className="text-[9px] text-muted-foreground">{t(eventLabelKeys[key])}</span>
+                <span className="text-[11px] text-muted-foreground">{t(eventLabelKeys[key])}</span>
               </div>
             ))}
           </div>
@@ -165,7 +165,7 @@ export function WarMap({ events, alerts }: WarMapProps) {
               onClick={() => setShowSatellite(prev => !prev)}
               className="flex items-center gap-2 w-full text-left pointer-events-auto hover:bg-muted/50 rounded px-1 py-0.5 transition-colors"
             >
-              <span className={`text-[9px] ${showSatellite ? "text-emerald-400" : "text-muted-foreground"}`}>
+              <span className={`text-[11px] ${showSatellite ? "text-emerald-400" : "text-muted-foreground"}`}>
                 🛰 Satellite
               </span>
               <span className={`w-1.5 h-1.5 rounded-full ${showSatellite ? "bg-emerald-400" : "bg-muted-foreground/30"}`} />
@@ -174,9 +174,9 @@ export function WarMap({ events, alerts }: WarMapProps) {
         </div>
       </div>
 
-      <div className="absolute bottom-3 left-3 z-[1000] pointer-events-none">
+      <div className="absolute bottom-3 ltr:left-3 rtl:right-3 z-[1000] pointer-events-none contain-layout">
         <div className="bg-card/80 backdrop-blur-sm border border-border rounded-md px-3 py-1.5">
-          <p className="text-[9px] uppercase tracking-[0.15em] text-primary font-semibold">
+          <p className="text-[11px] uppercase tracking-[0.15em] text-primary font-semibold">
             {t("map.eventsTracked", { count: events.length })}
           </p>
         </div>
