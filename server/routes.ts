@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { WebSocketServer, WebSocket } from "ws";
 import { seedIfEmpty } from "./seed";
-import { startDataFetcher, setNewEventCallback } from "./data-fetcher";
+import { startDataFetcher, setNewEventCallback, processRSSWebhook } from "./data-fetcher";
 import type { WarEvent } from "@shared/schema";
 
 export async function registerRoutes(
@@ -42,6 +42,17 @@ export async function registerRoutes(
       database: seeded ? "populated" : "empty",
       timestamp: new Date().toISOString(),
     });
+  });
+
+  // RSS.app webhook — receives instant push when new feed items arrive
+  app.post("/api/webhooks/rss", async (req, res) => {
+    try {
+      const count = await processRSSWebhook(req.body);
+      res.json({ ok: true, ingested: count });
+    } catch (err: any) {
+      console.error("[webhook/rss] Error:", err.message);
+      res.status(500).json({ error: "Failed to process webhook" });
+    }
   });
 
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });

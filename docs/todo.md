@@ -3,6 +3,24 @@
 A prioritized list of ideas to make the War Panel more powerful, viral, and useful.
 
 **Complexity Levels**: 🟢 Low | 🟡 Medium | 🔴 High | ⚫ Very High
+**Status**: ✅ Done | 🔧 Partially done | _(blank = not started)_
+
+---
+
+## Recently Completed (Feb 2026)
+
+The following features have been implemented:
+
+| Area | What was done |
+|------|---------------|
+| **Pikud HaOref API** | Real-time alerts via `fetchOrefAlerts()` with 38-city coordinate lookup, proxied through Tailscale VPN server |
+| **Telegram/OSINT RSS** | RSS.app Premium API integration — all Telegram channels managed in RSS.app dashboard, server polls every 60 s + webhook endpoint for instant push |
+| **AI Summarization** | GPT-4o-mini via OpenAI SDK, produces structured JSON summary every 120 s |
+| **Audio Alerts** | Browser siren (Oref Impact.mp3) on `air_raid_alert` events, mute toggle in header |
+| **Mobile Optimization** | `preferCanvas` on Leaflet, Vaul Drawer for sidebar panels, responsive layout |
+| **Backend Resilience** | DB row pruning (war_events 500, news 500, alerts 200, summaries 50), `express-rate-limit` 100 req/IP/min |
+| **Replit Removal** | All @replit packages and config files removed; project is fully self-hosted |
+| **Database** | Switched from Neon serverless to standard `pg.Pool` (max 20 connections); full SQL schema in `db/schema.sql` |
 
 ---
 
@@ -10,9 +28,9 @@ A prioritized list of ideas to make the War Panel more powerful, viral, and usef
 
 | # | Task | Complexity | Hours | Notes |
 |---|------|-----------|-------|-------|
-| 1 | Connect to Pikud HaOref (Home Front Command) real-time alert API via Israeli proxy | 🟡 Medium | 6-10h | API is simple JSON; needs proxy + area code mapping |
-| 2 | Integrate Red Alert Israel Telegram bot as a secondary alert source | 🟡 Medium | 8-12h | Requires Telegram Bot API + message parsing |
-| 3 | Scrape IDF Spokesperson Telegram channel for official military updates | 🟡 Medium | 10-16h | Needs Telegram client API, message parsing, NLP extraction |
+| 1 | ✅ Connect to Pikud HaOref (Home Front Command) real-time alert API via Israeli proxy | 🟡 Medium | 6-10h | **DONE** — `fetchOrefAlerts()` polls every 5 s via Tailscale proxy, 38-city coord map |
+| 2 | 🔧 Integrate Red Alert Israel Telegram bot as a secondary alert source | 🟡 Medium | 8-12h | **Partially done** — Telegram channels ingested via RSS.app API; direct Bot API not yet wired |
+| 3 | 🔧 Scrape IDF Spokesperson Telegram channel for official military updates | 🟡 Medium | 10-16h | **Partially done** — IDF channel can be added as RSS.app feed; NLP extraction not yet added |
 | 4 | Connect to Reuters/AP breaking news APIs for verified international coverage | 🟡 Medium | 6-10h | Paid API, straightforward REST integration |
 | 5 | Integrate OSINT Twitter/X accounts feed (e.g., @IntelCrab, @sentdefender) | 🔴 High | 16-24h | X API is expensive/restricted; may need scraping workaround |
 | 6 | Pull satellite imagery from Sentinel Hub API for strike verification | 🔴 High | 20-30h | Complex API, image processing, geo-alignment on map |
@@ -21,8 +39,8 @@ A prioritized list of ideas to make the War Panel more powerful, viral, and usef
 | 9 | Pull earthquake/seismology data (USGS API) to detect large explosions | 🟢 Low | 4-6h | Free public API, simple JSON, filter by region/magnitude |
 | 10 | Connect to Liveuamap API for crowdsourced conflict mapping data | 🟡 Medium | 8-12h | May need scraping; no official public API |
 | 11 | Integrate ACLED (Armed Conflict Location & Event Data) for academic-grade event data | 🟡 Medium | 8-12h | Free API with registration, well-documented |
-| 12 | Scrape Kann News, Ynet, Walla RSS feeds for Hebrew-language breaking news | 🟢 Low | 4-8h | Standard RSS parsing; proxy needed for some |
-| 13 | Integrate Al Jazeera and Al Arabiya RSS feeds for Arabic-language perspective | 🟢 Low | 3-5h | Public RSS feeds, straightforward parsing |
+| 12 | 🔧 Scrape Kann News, Ynet, Walla RSS feeds for Hebrew-language breaking news | 🟢 Low | 4-8h | **Easy win** — just add these as feeds in RSS.app dashboard; pipeline already ingests them |
+| 13 | 🔧 Integrate Al Jazeera and Al Arabiya RSS feeds for Arabic-language perspective | 🟢 Low | 3-5h | **Easy win** — add as feeds in RSS.app dashboard; no code changes needed |
 | 14 | Pull data from UN OCHA ReliefWeb API for humanitarian situation updates | 🟢 Low | 4-6h | Well-documented free API |
 | 15 | Connect to FIRMS (NASA Fire Information) satellite data for active fires/explosions | 🟡 Medium | 8-12h | Free API, needs geo-filtering and map overlay |
 | 16 | Integrate weather data (OpenWeatherMap) to show conditions affecting operations | 🟢 Low | 3-5h | Simple free API, display as map overlay or sidebar widget |
@@ -35,7 +53,7 @@ A prioritized list of ideas to make the War Panel more powerful, viral, and usef
 
 | # | Task | Complexity | Hours | Notes |
 |---|------|-----------|-------|-------|
-| 21 | Replace mock AI summary with real OpenAI/Anthropic API calls | 🟢 Low | 3-5h | Swap template with API call, craft prompt, handle response |
+| 21 | ✅ Replace mock AI summary with real OpenAI/Anthropic API calls | 🟢 Low | 3-5h | **DONE** — GPT-4o-mini via OpenAI SDK, JSON response format, refreshes every 120 s |
 | 22 | Add AI-powered event classification that auto-categorizes incoming raw reports | 🟡 Medium | 8-12h | Prompt engineering + classification pipeline |
 | 23 | Build a threat prediction model based on event patterns | ⚫ Very High | 40-60h | ML model training, historical data needed, validation |
 | 24 | Add sentiment analysis on news feeds to gauge media tone shifts | 🟡 Medium | 10-14h | Use LLM API or sentiment library, aggregate scores |
@@ -58,7 +76,7 @@ A prioritized list of ideas to make the War Panel more powerful, viral, and usef
 | 36 | Create full-screen "presentation mode" for briefing rooms | 🟢 Low | 4-6h | Fullscreen API, hide chrome, enlarge key panels |
 | 37 | Add keyboard shortcuts for power users | 🟢 Low | 3-5h | Global key listener, shortcut mapping, help overlay |
 | 38 | Build browser push notifications for critical alerts | 🟡 Medium | 8-12h | Service worker, Notification API, permission flow |
-| 39 | Add sound alerts (siren sounds) for critical-level events | 🟢 Low | 3-5h | Audio element, volume slider, WebSocket trigger |
+| 39 | ✅ Add sound alerts (siren sounds) for critical-level events | 🟢 Low | 3-5h | **DONE** — Oref Impact.mp3 siren on `air_raid_alert` WS events, mute/unmute toggle in header |
 | 40 | Create "focus mode" highlighting a single country/region | 🟡 Medium | 8-12h | Map zoom + filter, dim non-matching events, UI toggle |
 | 41 | Add event clustering on the map for dense areas | 🟢 Low | 4-6h | Leaflet.markercluster plugin, configure thresholds |
 | 42 | Build a heatmap layer showing event density over time | 🟡 Medium | 8-12h | Leaflet.heat plugin, time-windowed aggregation |
@@ -87,7 +105,7 @@ A prioritized list of ideas to make the War Panel more powerful, viral, and usef
 | 60 | Add user accounts with preferences, watchlists, subscriptions | 🔴 High | 24-36h | Auth system, user DB tables, settings UI, session management |
 | 61 | Create "situation room" for real-time multi-user collaboration | ⚫ Very High | 40-60h | WebSocket rooms, shared cursors, chat, permissions |
 | 62 | Add comments/discussion threads on events | 🟡 Medium | 12-18h | Comments DB table, thread UI, moderation, user auth |
-| 63 | Build mobile-optimized PWA with offline support | 🔴 High | 20-30h | Responsive redesign, service worker, manifest, caching |
+| 63 | 🔧 Build mobile-optimized PWA with offline support | 🔴 High | 20-30h | **Partially done** — responsive Drawer (Vaul), preferCanvas, mobile layout; still needs SW + manifest |
 | 64 | Create embeddable mini-widgets (alert ticker, stats counter) | 🟡 Medium | 10-16h | Separate micro-bundles, embed script, customization options |
 | 65 | Add QR codes on event cards for quick mobile sharing | 🟢 Low | 2-4h | QR code generation library, link to event detail page |
 
@@ -132,7 +150,7 @@ A prioritized list of ideas to make the War Panel more powerful, viral, and usef
 | 90 | Implement CDN for static assets + service worker for offline | 🟡 Medium | 8-12h | CDN config, SW registration, cache strategies |
 | 91 | Build load testing suite for 10,000+ concurrent users | 🟡 Medium | 10-14h | k6 or Artillery scripts, WS load testing, reporting |
 | 92 | Add Prometheus metrics and Grafana dashboards | 🟡 Medium | 10-16h | prom-client, custom metrics, Grafana provisioning |
-| 93 | Implement rate limiting and DDoS protection for public API | 🟢 Low | 4-6h | express-rate-limit, IP-based throttling, error responses |
+| 93 | ✅ Implement rate limiting and DDoS protection for public API | 🟢 Low | 4-6h | **DONE** — `express-rate-limit` 100 req/IP/min on `/api/*` routes |
 | 94 | Build redundant data fetcher on multiple servers | 🔴 High | 16-24h | Leader election, distributed locking, health monitoring |
 | 95 | Add database replication for read scaling | 🔴 High | 16-24h | Read replica setup, connection routing, failover logic |
 | 96 | Implement event deduplication using fuzzy matching | 🟡 Medium | 10-16h | String similarity algorithms, configurable threshold, merge logic |
@@ -169,3 +187,5 @@ A prioritized list of ideas to make the War Panel more powerful, viral, and usef
 | **Total** | **110** | **1,360-2,090h** |
 
 Estimated total effort: **1,360 to 2,090 developer hours** (roughly 8-12 months for a single full-time developer, or 3-4 months for a team of 3).
+
+> **Progress**: 4 tasks fully completed (✅), 5 tasks partially done (🔧), 101 remaining.

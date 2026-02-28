@@ -67,9 +67,9 @@ export PORT=3128
 node /opt/war-panel-proxy/index.js
 ```
 
-### Replit Configuration
+### Configuration
 
-Set these environment variables in Replit:
+Set these environment variables on your server:
 - `PROXY_BASE_URL` = `http://195.20.17.179:3128`
 - `PROXY_AUTH_TOKEN` = Same token as on the proxy server
 

@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { storage } from "./storage";
 import type { WarEvent, NewsItem, Alert, AISummary } from "@shared/schema";
+import OpenAI from "openai";
 
 interface DataSourceConfig {
   name: string;
@@ -25,106 +26,334 @@ export async function fetchViaProxy(url: string): Promise<Response> {
   return fetch(url);
 }
 
-const eventTemplates: Array<() => Omit<WarEvent, "id" | "timestamp">> = [
-  () => ({
-    type: "missile_launch" as const,
-    title: "New ballistic missile launch detected from Iran",
-    description: "IRGC medium-range ballistic missile launch detected via satellite",
-    location: "Isfahan, Iran",
-    lat: 32.6546 + (Math.random() - 0.5) * 2,
-    lng: 51.6680 + (Math.random() - 0.5) * 2,
-    country: "Iran",
-    source: "Satellite Detection",
-    threatLevel: "critical" as const,
-    verified: true,
-  }),
-  () => ({
-    type: "missile_intercept" as const,
-    title: "Iron Dome interception over southern Israel",
-    description: "Iron Dome battery successfully intercepted incoming rocket",
-    location: "Southern Israel",
-    lat: 31.2 + Math.random() * 0.5,
-    lng: 34.3 + Math.random() * 0.5,
-    country: "Israel",
-    source: "IDF Spokesperson",
-    threatLevel: "high" as const,
-    verified: true,
-  }),
-  () => ({
-    type: "air_raid_alert" as const,
-    title: "Red Alert activated - northern Israel",
-    description: "Sirens sounding in northern communities",
-    location: "Upper Galilee, Israel",
-    lat: 33.0 + Math.random() * 0.3,
-    lng: 35.3 + Math.random() * 0.5,
-    country: "Israel",
-    source: "Pikud HaOref",
-    threatLevel: "critical" as const,
-    verified: true,
-  }),
-  () => ({
-    type: "drone_launch" as const,
-    title: "UAV swarm launched from southern Lebanon",
-    description: "Multiple UAVs detected launching toward northern Israel",
-    location: "South Lebanon",
-    lat: 33.2 + Math.random() * 0.3,
-    lng: 35.2 + Math.random() * 0.3,
-    country: "Lebanon",
-    source: "UNIFIL",
-    threatLevel: "high" as const,
-    verified: true,
-  }),
-  () => ({
-    type: "missile_launch" as const,
-    title: "Rockets launched from Gaza Strip",
-    description: "Multiple rocket launches detected from northern Gaza",
-    location: "Northern Gaza",
-    lat: 31.5 + Math.random() * 0.1,
-    lng: 34.45 + Math.random() * 0.1,
-    country: "Gaza",
-    source: "IDF Spokesperson",
-    threatLevel: "high" as const,
-    verified: true,
-  }),
-];
+// ─── City-to-coordinate lookup for Pikud HaOref alerts ────────────────────
+const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
+  "תל אביב": { lat: 32.0853, lng: 34.7818 },
+  "תל אביב - יפו": { lat: 32.0853, lng: 34.7818 },
+  "ירושלים": { lat: 31.7683, lng: 35.2137 },
+  "חיפה": { lat: 32.794, lng: 34.9896 },
+  "באר שבע": { lat: 31.2518, lng: 34.7913 },
+  "אשדוד": { lat: 31.8044, lng: 34.6553 },
+  "אשקלון": { lat: 31.6688, lng: 34.5743 },
+  "נתניה": { lat: 32.3215, lng: 34.8532 },
+  "ראשון לציון": { lat: 31.9714, lng: 34.7925 },
+  "פתח תקווה": { lat: 32.0867, lng: 34.8867 },
+  "חולון": { lat: 32.0115, lng: 34.7788 },
+  "בני ברק": { lat: 32.0834, lng: 34.8331 },
+  "רמת גן": { lat: 32.0700, lng: 34.8236 },
+  "הרצליה": { lat: 32.1629, lng: 34.7914 },
+  "כפר סבא": { lat: 32.1751, lng: 34.9066 },
+  "רעננה": { lat: 32.1840, lng: 34.8710 },
+  "מודיעין": { lat: 31.8969, lng: 35.0104 },
+  "רחובות": { lat: 31.8928, lng: 34.8113 },
+  "לוד": { lat: 31.9516, lng: 34.8882 },
+  "רמלה": { lat: 31.9279, lng: 34.8664 },
+  "נהריה": { lat: 33.0057, lng: 35.0953 },
+  "עכו": { lat: 32.9272, lng: 35.0764 },
+  "קריית שמונה": { lat: 33.2085, lng: 35.5714 },
+  "שדרות": { lat: 31.5246, lng: 34.5968 },
+  "אילת": { lat: 29.5577, lng: 34.9519 },
+  "טבריה": { lat: 32.7940, lng: 35.5300 },
+  "צפת": { lat: 32.9658, lng: 35.4964 },
+  "עפולה": { lat: 32.6100, lng: 35.2917 },
+  "כרמיאל": { lat: 32.9148, lng: 35.2996 },
+  "דימונה": { lat: 31.0680, lng: 35.0338 },
+  "ערד": { lat: 31.2592, lng: 35.2151 },
+  "מגדל העמק": { lat: 32.6779, lng: 35.2409 },
+  "בית שאן": { lat: 32.5041, lng: 35.4964 },
+  "גבעת שמואל": { lat: 32.0758, lng: 34.8490 },
+  "הוד השרון": { lat: 32.1500, lng: 34.8900 },
+  "יבנה": { lat: 31.8781, lng: 34.7383 },
+  "קריית גת": { lat: 31.6100, lng: 34.7642 },
+  "נצרת": { lat: 32.6997, lng: 35.3035 },
+};
+const DEFAULT_COORDS = { lat: 31.5, lng: 34.75 };
 
-async function simulateEvents(): Promise<void> {
-  const template = eventTemplates[Math.floor(Math.random() * eventTemplates.length)]();
-  const newEvent: WarEvent = {
-    ...template,
-    id: randomUUID(),
-    timestamp: new Date().toISOString(),
-  };
-  await storage.addEvent(newEvent);
-  onNewEvent?.(newEvent);
+function getCityCoords(city: string): { lat: number; lng: number } {
+  // Try exact match first, then try partial match
+  if (CITY_COORDS[city]) return CITY_COORDS[city];
+  for (const [key, coords] of Object.entries(CITY_COORDS)) {
+    if (city.includes(key) || key.includes(city)) return coords;
+  }
+  return DEFAULT_COORDS;
 }
 
+// ─── 1. Pikud HaOref (Home Front Command) Alerts ──────────────────────────
+async function fetchOrefAlerts(): Promise<void> {
+  try {
+    const response = await fetchViaProxy("https://www.oref.org.il/WarningMessages/alert/alerts.json");
+    const text = await response.text();
+
+    // Oref returns empty string or empty array when no alerts
+    if (!text || text.trim() === "" || text.trim() === "[]") {
+      return;
+    }
+
+    const data = JSON.parse(text);
+    // Oref response: { id, cat, title, data: string[], desc } or array thereof
+    const alertEntries = Array.isArray(data) ? data : [data];
+
+    for (const entry of alertEntries) {
+      const cities: string[] = entry.data || [];
+      const threatTitle = entry.title || "Red Alert";
+
+      const newAlerts: Alert[] = [];
+      const newEvents: WarEvent[] = [];
+
+      for (const city of cities) {
+        const coords = getCityCoords(city);
+        const alertId = randomUUID();
+        const timestamp = new Date().toISOString();
+
+        newAlerts.push({
+          id: alertId,
+          area: city,
+          threat: threatTitle,
+          timestamp,
+          active: true,
+          lat: coords.lat,
+          lng: coords.lng,
+        });
+
+        const event: WarEvent = {
+          id: randomUUID(),
+          type: "air_raid_alert",
+          title: `Red Alert — ${city}`,
+          description: `${threatTitle}. Sirens sounding in ${city}. Residents instructed to enter shelters.`,
+          location: `${city}, Israel`,
+          lat: coords.lat,
+          lng: coords.lng,
+          country: "Israel",
+          source: "Pikud HaOref",
+          timestamp,
+          threatLevel: "critical",
+          verified: true,
+        };
+        newEvents.push(event);
+      }
+
+      if (newAlerts.length > 0) {
+        await storage.addAlerts(newAlerts);
+      }
+
+      for (const event of newEvents) {
+        await storage.addEvent(event);
+        onNewEvent?.(event);
+      }
+    }
+  } catch (err: any) {
+    console.error("[oref-alerts] Error fetching Oref alerts:", err.message);
+  }
+}
+
+// ─── 2. RSS.app OSINT Feed Pipeline ───────────────────────────────────────
+// Uses RSS.app Premium API to fetch Telegram/OSINT feeds server-side.
+// All items are cached in the local DB — zero RSS.app calls per end-user.
+
+const RSSAPP_API_KEY = process.env.RSSAPP_API_KEY || "";
+const RSSAPP_API_SECRET = process.env.RSSAPP_API_SECRET || "";
+const RSSAPP_BASE = "https://api.rss.app/v1";
+const seenGuids = new Set<string>();
+const BREAKING_KEYWORDS = ["צבע אדום", "Explosion", "בלעדי", "BREAKING", "דחוף", "عاجل", "explosion", "breaking", "פיצוץ", "רקטה", "טיל"];
+
+async function rssAppRequest(endpoint: string): Promise<any> {
+  const res = await fetch(`${RSSAPP_BASE}${endpoint}`, {
+    headers: {
+      "Authorization": `Bearer ${RSSAPP_API_KEY}:${RSSAPP_API_SECRET}`,
+      "Accept": "application/json",
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`RSS.app API ${res.status}: ${await res.text()}`);
+  }
+  return res.json();
+}
+
+async function fetchRSSAppFeeds(): Promise<void> {
+  if (!RSSAPP_API_KEY || !RSSAPP_API_SECRET) {
+    return; // Feature disabled if no API credentials
+  }
+
+  try {
+    // 1. List all feeds configured in the RSS.app dashboard
+    const feedsResponse = await rssAppRequest("/feeds");
+    const feeds: Array<{ id: string; title: string; rss_feed_url?: string }> = feedsResponse.data || feedsResponse.feeds || [];
+
+    if (feeds.length === 0) {
+      console.log("[rss-app] No feeds found in RSS.app account");
+      return;
+    }
+
+    let totalIngested = 0;
+
+    for (const feed of feeds) {
+      try {
+        // 2. Fetch items for each feed
+        const itemsResponse = await rssAppRequest(`/feeds/${feed.id}/items`);
+        const items: Array<{
+          id?: string;
+          guid?: string;
+          title?: string;
+          content_text?: string;
+          url?: string;
+          date_published?: string;
+          date_modified?: string;
+        }> = itemsResponse.data || itemsResponse.items || [];
+
+        const feedSource = feed.title || `Feed ${feed.id}`;
+        const newItems: NewsItem[] = [];
+
+        for (const item of items) {
+          const guid = item.id || item.guid || item.url || item.title || "";
+          if (!guid || seenGuids.has(guid)) continue;
+
+          seenGuids.add(guid);
+          // Cap in-memory dedup set at 1000
+          if (seenGuids.size > 1000) {
+            const first = seenGuids.values().next().value;
+            if (first) seenGuids.delete(first);
+          }
+
+          const title = item.title || item.content_text?.slice(0, 200) || "Untitled";
+          const isBreaking = BREAKING_KEYWORDS.some(kw =>
+            title.toLowerCase().includes(kw.toLowerCase())
+          );
+
+          newItems.push({
+            id: randomUUID(),
+            title,
+            source: feedSource,
+            timestamp: item.date_published || item.date_modified || new Date().toISOString(),
+            url: item.url,
+            category: "telegram",
+            breaking: isBreaking,
+          });
+        }
+
+        if (newItems.length > 0) {
+          await storage.addNews(newItems);
+          totalIngested += newItems.length;
+        }
+      } catch (err: any) {
+        console.error(`[rss-app] Error fetching items for feed "${feed.title}":`, err.message);
+      }
+    }
+
+    if (totalIngested > 0) {
+      console.log(`[rss-app] Ingested ${totalIngested} new items from ${feeds.length} feeds`);
+    }
+  } catch (err: any) {
+    console.error("[rss-app] Error listing feeds:", err.message);
+  }
+}
+
+// ─── RSS.app Webhook handler (instant push) ───────────────────────────────
+export async function processRSSWebhook(body: any): Promise<number> {
+  // RSS.app webhook payload may contain items directly or nested
+  const items: Array<any> = body?.items || body?.data || (Array.isArray(body) ? body : [body]);
+  const feedTitle = body?.feed?.title || body?.title || "RSS.app Webhook";
+
+  const newItems: NewsItem[] = [];
+
+  for (const item of items) {
+    const guid = item.id || item.guid || item.url || item.link || item.title || "";
+    if (!guid || seenGuids.has(guid)) continue;
+
+    seenGuids.add(guid);
+    if (seenGuids.size > 1000) {
+      const first = seenGuids.values().next().value;
+      if (first) seenGuids.delete(first);
+    }
+
+    const title = item.title || item.content_text?.slice(0, 200) || "Untitled";
+    const isBreaking = BREAKING_KEYWORDS.some(kw =>
+      title.toLowerCase().includes(kw.toLowerCase())
+    );
+
+    newItems.push({
+      id: randomUUID(),
+      title,
+      source: feedTitle,
+      timestamp: item.date_published || item.pubDate || item.isoDate || new Date().toISOString(),
+      url: item.url || item.link,
+      category: "telegram",
+      breaking: isBreaking,
+    });
+  }
+
+  if (newItems.length > 0) {
+    await storage.addNews(newItems);
+    console.log(`[webhook/rss] Ingested ${newItems.length} items from ${feedTitle}`);
+  }
+
+  return newItems.length;
+}
+
+// ─── 3. Real AI Summarization via GPT ──────────────────────────────────────
+const openai = new OpenAI(); // Reads OPENAI_API_KEY from env; throws if missing
+
 async function refreshAISummary(): Promise<void> {
-  const allAlerts = await storage.getAlerts();
-  const activeCount = allAlerts.filter(a => a.active).length;
-  const threat = activeCount > 2 ? "critical" : activeCount > 0 ? "high" : "medium";
+  try {
+    const recentEvents = (await storage.getEvents()).slice(0, 15);
+    const recentNews = (await storage.getNews()).slice(0, 10);
 
-  const allEvents = await storage.getEvents();
-  const launched = allEvents.filter(e => e.type === "missile_launch").length;
-  const intercepted = allEvents.filter(e => e.type === "missile_intercept").length;
-  const rate = launched > 0 ? Math.round((intercepted / launched) * 100) : 0;
+    const systemPrompt = `You are a military intelligence analyst monitoring the Iran-Israel conflict. Given the following war events and news items, produce a JSON object with exactly these fields:
+- "summary": string (2-3 paragraph situation assessment)
+- "threatAssessment": one of "critical", "high", "medium", "low"
+- "keyPoints": array of 4-6 short strings summarizing key developments
+- "recommendation": string (actionable recommendation for civilians)
 
-  const summary: AISummary = {
-    summary: `Current situation assessment indicates a multi-front escalation with active missile and drone threats from Iran, Lebanon, Yemen, and Iraqi militias targeting Israeli territory. Israeli defense systems (Iron Dome, Arrow, David's Sling) are operating at high capacity with a ${rate}% missile interception rate. US CENTCOM forces are providing supplementary defense with THAAD and Patriot systems. ${activeCount} active alerts are currently in effect across Israeli territory. The primary threat axis remains Iranian ballistic missiles from the east, with secondary rocket threats from Lebanon in the north and Gaza in the southwest.`,
-    threatAssessment: threat as AISummary["threatAssessment"],
-    keyPoints: [
-      "Multi-front engagement: Iran, Lebanon, Yemen, Iraq, and Gaza launching coordinated attacks",
-      `Israeli air defense systems operating at ${rate}% missile interception rate across all platforms`,
-      "US CENTCOM providing supplementary air defense with THAAD and Patriot deployments",
-      `${activeCount} active Pikud HaOref alerts - sheltering instructions in effect for affected areas`,
-      `${allEvents.length} total events tracked in the last 24 hours`,
-      "UN Security Council monitoring situation",
-    ],
-    lastUpdated: new Date().toISOString(),
-    recommendation: "Maintain maximum alert posture. All civilians in affected areas should remain in shelters until all-clear is given by Pikud HaOref. Monitor official channels for updated instructions. Avoid unnecessary travel in central and northern Israel.",
-  };
+Respond ONLY with valid JSON. No markdown, no code fences.`;
 
-  await storage.setAISummary(summary);
+    const userPrompt = `Recent War Events (last 15):
+${JSON.stringify(recentEvents.map(e => ({ type: e.type, title: e.title, location: e.location, country: e.country, time: e.timestamp, threat: e.threatLevel })), null, 2)}
+
+Recent News Items (last 10):
+${JSON.stringify(recentNews.map(n => ({ title: n.title, source: n.source, time: n.timestamp, breaking: n.breaking })), null, 2)}`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+      max_tokens: 1500,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      console.error("[ai-summary] Empty response from OpenAI");
+      return;
+    }
+
+    const parsed = JSON.parse(content);
+
+    // Validate required fields
+    if (!parsed.summary || !parsed.threatAssessment || !parsed.keyPoints || !parsed.recommendation) {
+      console.error("[ai-summary] Missing required fields in GPT response");
+      return;
+    }
+
+    const validThreats = ["critical", "high", "medium", "low"];
+    if (!validThreats.includes(parsed.threatAssessment)) {
+      parsed.threatAssessment = "medium";
+    }
+
+    const summary: AISummary = {
+      summary: parsed.summary,
+      threatAssessment: parsed.threatAssessment as AISummary["threatAssessment"],
+      keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints : [],
+      lastUpdated: new Date().toISOString(),
+      recommendation: parsed.recommendation,
+    };
+
+    await storage.setAISummary(summary);
+    console.log("[ai-summary] AI summary refreshed via GPT-4o-mini");
+  } catch (err: any) {
+    console.error("[ai-summary] Error refreshing AI summary:", err.message);
+  }
 }
 
 let onNewEvent: ((event: WarEvent) => void) | null = null;
@@ -135,16 +364,23 @@ export function setNewEventCallback(cb: (event: WarEvent) => void) {
 
 const dataSources: DataSourceConfig[] = [
   {
-    name: "simulated-events",
+    name: "oref-alerts",
     enabled: true,
-    fetchIntervalMs: 15000 + Math.random() * 15000,
+    fetchIntervalMs: 5000,
+    proxyRequired: true,
+    fetchFn: fetchOrefAlerts,
+  },
+  {
+    name: "rss-app-feeds",
+    enabled: true,
+    fetchIntervalMs: 60000,
     proxyRequired: false,
-    fetchFn: simulateEvents,
+    fetchFn: fetchRSSAppFeeds,
   },
   {
     name: "ai-summary-refresh",
     enabled: true,
-    fetchIntervalMs: 60000,
+    fetchIntervalMs: 120000,
     proxyRequired: false,
     fetchFn: refreshAISummary,
   },

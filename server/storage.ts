@@ -56,11 +56,8 @@ export class DatabaseStorage implements IStorage {
 
     const oldCount = await db.select({ count: sql<number>`count(*)` }).from(warEvents);
     if (oldCount[0].count > 500) {
-      const oldest = await db.select({ id: warEvents.id }).from(warEvents)
-        .orderBy(warEvents.timestamp).limit(Number(oldCount[0].count) - 500);
-      for (const row of oldest) {
-        await db.delete(warEvents).where(eq(warEvents.id, row.id));
-      }
+      const excess = Number(oldCount[0].count) - 500;
+      await db.execute(sql`DELETE FROM war_events WHERE id IN (SELECT id FROM war_events ORDER BY timestamp ASC LIMIT ${excess})`);
     }
 
     return event;
@@ -168,6 +165,13 @@ export class DatabaseStorage implements IStorage {
       breaking: n.breaking,
     }));
     await db.insert(newsItems).values(values).onConflictDoNothing();
+
+    // Prune news_items to max 500 rows
+    const newsCount = await db.select({ count: sql<number>`count(*)` }).from(newsItems);
+    if (newsCount[0].count > 500) {
+      const excess = Number(newsCount[0].count) - 500;
+      await db.execute(sql`DELETE FROM news_items WHERE id IN (SELECT id FROM news_items ORDER BY timestamp ASC LIMIT ${excess})`);
+    }
   }
 
   async getAlerts(): Promise<Alert[]> {
@@ -195,6 +199,13 @@ export class DatabaseStorage implements IStorage {
       lng: a.lng,
     }));
     await db.insert(alerts).values(values).onConflictDoNothing();
+
+    // Prune alerts to max 200 rows
+    const alertCount = await db.select({ count: sql<number>`count(*)` }).from(alerts);
+    if (alertCount[0].count > 200) {
+      const excess = Number(alertCount[0].count) - 200;
+      await db.execute(sql`DELETE FROM alerts WHERE id IN (SELECT id FROM alerts ORDER BY timestamp ASC LIMIT ${excess})`);
+    }
   }
 
   async updateAlert(id: string, active: boolean): Promise<void> {
@@ -224,6 +235,13 @@ export class DatabaseStorage implements IStorage {
       lastUpdated: summary.lastUpdated,
       recommendation: summary.recommendation,
     });
+
+    // Prune ai_summaries to max 50 rows
+    const summaryCount = await db.select({ count: sql<number>`count(*)` }).from(aiSummaries);
+    if (summaryCount[0].count > 50) {
+      const excess = Number(summaryCount[0].count) - 50;
+      await db.execute(sql`DELETE FROM ai_summaries WHERE id IN (SELECT id FROM ai_summaries ORDER BY id ASC LIMIT ${excess})`);
+    }
   }
 
   private async generateAISummary(): Promise<AISummary> {

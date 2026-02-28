@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Radio, Wifi, Activity } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Shield, Radio, Wifi, Activity, Volume2, VolumeX } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 
-export function HeaderBar() {
+interface HeaderBarProps {
+  isMuted?: boolean;
+  onToggleMute?: () => void;
+}
+
+export function HeaderBar({ isMuted = true, onToggleMute }: HeaderBarProps) {
   const { t, i18n } = useTranslation();
   const [time, setTime] = useState(new Date());
   const [israelTime, setIsraelTime] = useState("");
@@ -62,6 +68,22 @@ export function HeaderBar() {
       </div>
 
       <div className="flex items-center gap-3">
+        {onToggleMute && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={onToggleMute}
+            title={isMuted ? "Unmute Alerts" : "Mute Alerts"}
+          >
+            {isMuted ? (
+              <VolumeX className="w-3.5 h-3.5 text-muted-foreground" />
+            ) : (
+              <Volume2 className="w-3.5 h-3.5 text-red-400" />
+            )}
+          </Button>
+        )}
+
         <LanguageSwitcher />
 
         <div className="h-4 w-px bg-border" />

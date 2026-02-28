@@ -58,6 +58,7 @@ export function WarMap({ events, alerts }: WarMapProps) {
         attributionControl={false}
         minZoom={3}
         maxZoom={12}
+        preferCanvas={true}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
