@@ -399,17 +399,19 @@ async function fetchRSSAppFeeds(): Promise<void> {
 
 // ─── RSS.app Webhook handler (instant push) ───────────────────────────────
 export async function processRSSWebhook(body: any): Promise<number> {
-  // RSS.app webhook payload format: { id, type, feed: { title, items: [...] }, ... }
-  // Extract items from all known locations
+  // RSS.app webhook payload format: { id, type: "feed_update", feed: { title, items_new: [...], items_changed: [...] } }
+  // Extract items from all known locations — RSS.app uses "items_new" + "items_changed"
+  const feedItemsNew: Array<any> = body?.feed?.items_new || [];
+  const feedItemsChanged: Array<any> = body?.feed?.items_changed || [];
   const items: Array<any> =
-    body?.feed?.items ||
-    body?.feed?.entries ||
-    body?.items ||
-    body?.entries ||
-    body?.articles ||
-    body?.data ||
-    body?.new_items ||
-    (Array.isArray(body) ? body : []);
+    feedItemsNew.length > 0 || feedItemsChanged.length > 0
+      ? [...feedItemsNew, ...feedItemsChanged]
+      : body?.feed?.items ||
+      body?.feed?.entries ||
+      body?.items ||
+      body?.entries ||
+      body?.data ||
+      (Array.isArray(body) ? body : []);
 
   const feedTitle = body?.feed?.title || body?.title || body?.feed?.name || "RSS.app Webhook";
 
