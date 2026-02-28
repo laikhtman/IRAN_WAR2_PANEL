@@ -1,0 +1,19 @@
+[Unit]
+Description=IRAN WAR2 PANEL (Production)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/iran-panel-production
+EnvironmentFile=/opt/iran-panel-production/.env
+ExecStart=/usr/bin/node dist/index.cjs
+Restart=on-failure
+RestartSec=5
+# Output to syslog
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=iran-panel-prod
+
+[Install]
+WantedBy=multi-user.target
