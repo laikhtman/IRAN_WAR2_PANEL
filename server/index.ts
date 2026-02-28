@@ -1,12 +1,19 @@
 import express, { type Request, Response, NextFunction } from "express";
 import compression from "compression";
+import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { geoBlockMiddleware, initGeoBlock } from "./geo-block";
+import { loadSettings, getSetting, onSettingChange } from "./admin-settings";
+import { registerAdminRoutes } from "./admin-routes";
+import { getAdminPath, isAdminEnabled } from "./admin-auth";
+import { startAgentScheduler, stopAgentScheduler } from "./agent-scheduler";
 
 const app = express();
 app.set('trust proxy', 1); // Behind Cloudflare/Nginx — needed for correct rate-limiting by real client IP
+app.use(cookieParser());
 const httpServer = createServer(app);
 
 declare module "http" {
@@ -40,6 +47,9 @@ app.use("/feed.xml", (_req, res, next) => {
   next();
 });
 
+// Country-based geo-blocking (reads CF-IPCountry header from Cloudflare)
+app.use(geoBlockMiddleware);
+
 // Early hints for critical resources on HTML pages
 app.use((req, res, next) => {
   if (req.accepts("html") && !req.path.startsWith("/api")) {
@@ -65,13 +75,24 @@ app.use(express.text({ limit: '5mb', type: 'text/*' }));
 
 app.use(express.urlencoded({ extended: false }));
 
-// Rate limiting: 100 requests per IP per minute for API routes
-const apiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many requests, try again later" },
+// Rate limiting: dynamic from admin settings
+function createApiLimiter() {
+  return rateLimit({
+    windowMs: getSetting<number>("rate_limit_window_ms") || 60000,
+    max: getSetting<number>("rate_limit_max_requests") || 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, try again later" },
+  });
+}
+let apiLimiter = createApiLimiter();
+
+// Hot-reload rate limiter when settings change
+onSettingChange((key) => {
+  if (key === "rate_limit_window_ms" || key === "rate_limit_max_requests") {
+    apiLimiter = createApiLimiter();
+    console.log("[rate-limit] Reloaded rate limiter from admin settings");
+  }
 });
 // Apply rate limiting to API routes but exclude webhooks
 app.use("/api", (req, res, next) => {
@@ -120,7 +141,17 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Load admin settings from DB
+  await loadSettings();
+  await initGeoBlock();
+
+  // Register admin routes
+  registerAdminRoutes(app);
+
   await registerRoutes(httpServer, app);
+
+  // Start agent scheduler
+  startAgentScheduler().catch(err => console.error("[agent-scheduler] Init error:", err.message));
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -149,6 +180,12 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
+  // Graceful shutdown
+  process.on("SIGTERM", () => {
+    stopAgentScheduler();
+    httpServer.close();
+  });
+
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
     {

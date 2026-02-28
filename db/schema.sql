@@ -113,6 +113,76 @@ CREATE TABLE IF NOT EXISTS satellite_images (
 );
 
 
+-- ─── 7. Admin Settings ──────────────────────────────────────────────────────
+-- Key-value settings store for admin configuration.
+
+CREATE TABLE IF NOT EXISTS admin_settings (
+    key             VARCHAR(100)    PRIMARY KEY,
+    value           JSONB           NOT NULL,
+    updated_at      TEXT            NOT NULL DEFAULT (now()::text)
+);
+
+
+-- ─── 8. Admin Sessions ──────────────────────────────────────────────────────
+-- Token-authenticated admin sessions with expiry.
+
+CREATE TABLE IF NOT EXISTS admin_sessions (
+    id              VARCHAR(64)     PRIMARY KEY,
+    created_at      TEXT            NOT NULL,
+    expires_at      TEXT            NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires ON admin_sessions (expires_at);
+
+
+-- ─── 9. Blocked Countries ───────────────────────────────────────────────────
+-- ISO 3166-1 alpha-2 country codes blocked from accessing the site.
+
+CREATE TABLE IF NOT EXISTS blocked_countries (
+    country_code    VARCHAR(2)      PRIMARY KEY,
+    country_name    VARCHAR(100)    NOT NULL,
+    blocked_at      TEXT            NOT NULL DEFAULT (now()::text)
+);
+
+
+-- ─── 10. Agents ─────────────────────────────────────────────────────────────
+-- OpenClaw autonomous agent definitions.
+
+CREATE TABLE IF NOT EXISTS agents (
+    id              VARCHAR(36)     PRIMARY KEY,
+    name            VARCHAR(200)    NOT NULL,
+    type            VARCHAR(50)     NOT NULL,
+    description     TEXT,
+    enabled         BOOLEAN         NOT NULL DEFAULT TRUE,
+    schedule_cron   VARCHAR(100),
+    config          JSONB           NOT NULL DEFAULT '{}',
+    last_run_at     TEXT,
+    last_result     JSONB,
+    created_at      TEXT            NOT NULL,
+    updated_at      TEXT            NOT NULL
+);
+
+
+-- ─── 11. Agent Logs ─────────────────────────────────────────────────────────
+-- Execution logs for OpenClaw agents.
+
+CREATE TABLE IF NOT EXISTS agent_logs (
+    id              SERIAL          PRIMARY KEY,
+    agent_id        VARCHAR(36)     NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+    started_at      TEXT            NOT NULL,
+    finished_at     TEXT,
+    status          VARCHAR(20)     NOT NULL DEFAULT 'running',
+    input           JSONB,
+    output          JSONB,
+    tokens_used     INTEGER         DEFAULT 0,
+    error           TEXT,
+    created_at      TEXT            NOT NULL DEFAULT (now()::text)
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_logs_agent_id ON agent_logs (agent_id);
+CREATE INDEX IF NOT EXISTS idx_agent_logs_created_at ON agent_logs (created_at);
+
+
 -- ─── Done ──────────────────────────────────────────────────────────────────
 -- All tables created. The application uses Drizzle ORM which maps to these
 -- exact table/column names. You can also use `npm run db:push` to let

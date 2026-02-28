@@ -8,19 +8,23 @@ import { useTranslation } from "react-i18next";
 import { isRTL } from "@/lib/i18n";
 import { TITLES, DESCRIPTIONS, SUPPORTED_LANGS, type SupportedLang } from "@shared/seo-config";
 import Dashboard from "@/pages/dashboard";
-import HealthPage from "@/pages/health";
 import NotFound from "@/pages/not-found";
 
 const TvDashboard = lazy(() => import("@/pages/tv-dashboard"));
+const AdminPanel = lazy(() => import("@/pages/admin/index"));
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
-      <Route path="/health" component={HealthPage} />
       <Route path="/tv">
         <Suspense fallback={<div className="flex h-screen items-center justify-center bg-background text-foreground">Loading TV Mode...</div>}>
           <TvDashboard />
+        </Suspense>
+      </Route>
+      <Route path="/panel-272d672e974546a7/:rest*">
+        <Suspense fallback={<div className="flex h-screen items-center justify-center bg-[#0a0e14] text-slate-400">Loading Admin...</div>}>
+          <AdminPanel />
         </Suspense>
       </Route>
       <Route component={NotFound} />

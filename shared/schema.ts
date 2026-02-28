@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { pgTable, varchar, text, real, boolean, timestamp, jsonb, serial } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, real, boolean, timestamp, jsonb, serial, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 
 export const eventTypes = [
@@ -189,7 +189,115 @@ export const sentimentResponseSchema = z.object({
 });
 
 export type SentimentResponse = z.infer<typeof sentimentResponseSchema>;
+
+// ─── Admin Settings ─────────────────────────────────────────────────────────
+
+export const adminSettings = pgTable("admin_settings", {
+  key: varchar("key", { length: 100 }).primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+// ─── Admin Sessions ─────────────────────────────────────────────────────────
+
+export const adminSessions = pgTable("admin_sessions", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  createdAt: text("created_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
+});
+
+// ─── Blocked Countries ──────────────────────────────────────────────────────
+
+export const blockedCountries = pgTable("blocked_countries", {
+  countryCode: varchar("country_code", { length: 2 }).primaryKey(),
+  countryName: varchar("country_name", { length: 100 }).notNull(),
+  blockedAt: text("blocked_at").notNull(),
+});
+
+// ─── Agents ─────────────────────────────────────────────────────────────────
+
+export const agents = pgTable("agents", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  description: text("description"),
+  enabled: boolean("enabled").notNull().default(true),
+  scheduleCron: varchar("schedule_cron", { length: 100 }),
+  config: jsonb("config").notNull().$type<Record<string, any>>(),
+  lastRunAt: text("last_run_at"),
+  lastResult: jsonb("last_result").$type<{ success: boolean; output: string; error?: string }>(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+// ─── Agent Logs ─────────────────────────────────────────────────────────────
+
+export const agentLogs = pgTable("agent_logs", {
+  id: serial("id").primaryKey(),
+  agentId: varchar("agent_id", { length: 36 }).notNull(),
+  startedAt: text("started_at").notNull(),
+  finishedAt: text("finished_at"),
+  status: varchar("status", { length: 20 }).notNull().default("running"),
+  input: jsonb("input"),
+  output: jsonb("output"),
+  tokensUsed: integer("tokens_used").default(0),
+  error: text("error"),
+  createdAt: text("created_at").notNull(),
+});
+
+// ─── Admin Insert Schemas ───────────────────────────────────────────────────
+
+export const insertAdminSettingSchema = createInsertSchema(adminSettings);
+export const insertAdminSessionSchema = createInsertSchema(adminSessions);
+export const insertBlockedCountrySchema = createInsertSchema(blockedCountries);
+export const insertAgentSchema = createInsertSchema(agents).omit({ });
+export const insertAgentLogSchema = createInsertSchema(agentLogs).omit({ id: true });
+
+// ─── Agent Zod Schemas ──────────────────────────────────────────────────────
+
+export const agentTypes = ["content_moderator", "news_curator", "alert_manager", "seo_optimizer", "custom"] as const;
+
+export const agentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.enum(agentTypes),
+  description: z.string().nullable(),
+  enabled: z.boolean(),
+  scheduleCron: z.string().nullable(),
+  config: z.record(z.any()),
+  lastRunAt: z.string().nullable(),
+  lastResult: z.object({
+    success: z.boolean(),
+    output: z.string(),
+    error: z.string().optional(),
+  }).nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const agentLogSchema = z.object({
+  id: z.number(),
+  agentId: z.string(),
+  startedAt: z.string(),
+  finishedAt: z.string().nullable(),
+  status: z.enum(["running", "success", "error", "cancelled"]),
+  input: z.any().nullable(),
+  output: z.any().nullable(),
+  tokensUsed: z.number().nullable(),
+  error: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+// ─── Type Exports ───────────────────────────────────────────────────────────
+
 export type InsertNewsItem = typeof newsItems.$inferInsert;
 export type InsertAlert = typeof alerts.$inferInsert;
 export type InsertAiSummary = z.infer<typeof insertAiSummarySchema>;
 export type DataSourceStatus = typeof dataSourceStatus.$inferSelect;
+export type AdminSetting = typeof adminSettings.$inferSelect;
+export type AdminSession = typeof adminSessions.$inferSelect;
+export type BlockedCountry = typeof blockedCountries.$inferSelect;
+export type Agent = z.infer<typeof agentSchema>;
+export type AgentLog = z.infer<typeof agentLogSchema>;
+export type InsertAgent = typeof agents.$inferInsert;
+export type InsertAgentLog = typeof agentLogs.$inferInsert;

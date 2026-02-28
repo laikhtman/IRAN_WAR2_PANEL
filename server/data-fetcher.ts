@@ -971,3 +971,27 @@ export function stopDataFetcher(): void {
   intervals.length = 0;
   console.log("[data-fetcher] Stopped all data fetchers");
 }
+
+/**
+ * Trigger an immediate fetch for a specific data source by name.
+ * Used by admin panel "Trigger Now" button.
+ */
+export async function triggerFetchNow(sourceName: string): Promise<string> {
+  const source = dataSources.find(s => s.name === sourceName);
+  if (!source) return `Source "${sourceName}" not found`;
+  if (!source.enabled) return `Source "${sourceName}" is disabled`;
+  
+  try {
+    await source.fetchFn();
+    recordSourceRun(source.name);
+    return `Source "${sourceName}" fetched successfully`;
+  } catch (err: any) {
+    recordSourceRun(source.name, err.message);
+    return `Source "${sourceName}" failed: ${err.message}`;
+  }
+}
+
+/** Get the list of data source names */
+export function getDataSourceNames(): string[] {
+  return dataSources.map(s => s.name);
+}

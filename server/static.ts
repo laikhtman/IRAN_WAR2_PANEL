@@ -9,6 +9,7 @@ import {
   getLangDir,
   type SupportedLang,
 } from "@shared/seo-config";
+import { getSetting } from "./admin-settings";
 
 function detectLang(req: Request): SupportedLang {
   // 1. Query parameter ?hl=he
@@ -101,6 +102,15 @@ function injectSeo(template: string, lang: SupportedLang, pagePath: string): str
 
   // Inject JSON-LD
   html = html.replace("<!--SEO_JSONLD-->", buildJsonLd());
+
+  // Inject Google Analytics if enabled
+  const gaEnabled = getSetting<boolean>("ga_enabled");
+  const gaId = getSetting<string>("ga_measurement_id");
+  if (gaEnabled && gaId) {
+    const gaScript = `<script async src="https://www.googletagmanager.com/gtag/js?id=${gaId}"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}');</script>`;
+    html = html.replace("</head>", `${gaScript}\n</head>`);
+  }
 
   return html;
 }
