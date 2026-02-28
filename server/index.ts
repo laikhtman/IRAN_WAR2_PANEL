@@ -5,6 +5,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 
 const app = express();
+app.set('trust proxy', 1); // Behind Cloudflare/Nginx — needed for correct rate-limiting by real client IP
 const httpServer = createServer(app);
 
 declare module "http" {
@@ -15,11 +16,15 @@ declare module "http" {
 
 app.use(
   express.json({
+    limit: '5mb',
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
   }),
 );
+
+// Also accept text/plain bodies (some webhooks don't send application/json)
+app.use(express.text({ limit: '5mb', type: 'text/*' }));
 
 app.use(express.urlencoded({ extended: false }));
 
@@ -31,7 +36,14 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many requests, try again later" },
 });
-app.use("/api", apiLimiter);
+// Apply rate limiting to API routes but exclude webhooks
+app.use("/api", (req, res, next) => {
+  // Skip rate limiting for webhook endpoints
+  if (req.path.startsWith('/webhooks/')) {
+    return next();
+  }
+  return apiLimiter(req, res, next);
+});
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
