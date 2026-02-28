@@ -1,40 +1,35 @@
-# Data Sources - Real vs. Mock
+# Data Sources
 
-This document details every piece of data displayed in the dashboard, where it comes from, and whether it uses real or simulated data.
+This document details every piece of data displayed in the dashboard, where it comes from, and its current status.
 
 ## Summary
 
 | Data | Source | Status | File |
 |------|--------|--------|------|
-| War Events | Simulated (random templates) | **Mock** | `server/data-fetcher.ts` |
-| Seed Events | Hardcoded initial data | **Mock** | `server/seed.ts` |
-| News Items | Hardcoded seed data | **Mock** | `server/seed.ts` |
-| Alerts (Oref) | Hardcoded seed data | **Mock** | `server/seed.ts` |
-| AI Summary | Template-based generation from DB stats | **Mock** | `server/data-fetcher.ts` |
-| Statistics | Computed from war_events table | **Derived** (from mock events) | `server/storage.ts` |
-| TV Channels | Hardcoded YouTube embed URLs | **Real streams** (if YouTube links are valid) | `client/src/components/live-media-panel.tsx` |
-| Live Cameras | Hardcoded YouTube embed URLs | **Real streams** (if YouTube links are valid) | `client/src/components/live-media-panel.tsx` |
-| Proxy Server | Infrastructure ready, not connected | **Not active** | `server/data-fetcher.ts` |
+| War Events | Oref alerts + RSS.app AI-classified | **REAL** | `server/data-fetcher.ts` |
+| News Items | RSS.app Premium API (Telegram/OSINT feeds) | **REAL** | `server/data-fetcher.ts` |
+| Alerts (Oref) | Pikud HaOref API via Tailscale VPN proxy | **REAL** | `server/data-fetcher.ts` |
+| AI Summary | GPT-4o-mini via OpenAI SDK | **REAL** | `server/data-fetcher.ts` |
+| Sentiment | GPT-4o-mini sentiment analysis | **REAL** | `server/data-fetcher.ts` |
+| AI Classification | GPT-4o-mini event classification | **REAL** | `server/data-fetcher.ts` |
+| Statistics | Computed from war_events table | **Derived** | `server/storage.ts` |
+| Satellite Imagery | Sentinel Hub WMS/Catalog API | **Configured** (needs API key) | `server/data-fetcher.ts` |
+| Marine Traffic | MarineTraffic API | **Configured** (needs API key) | `server/data-fetcher.ts` |
+| ADS-B Exchange | ADS-B Exchange API | **Configured** (needs API key) | `server/data-fetcher.ts` |
+| TV Channels | Hardcoded embeds (YouTube / livehdtv.com) | **Real streams** | `live-media-panel.tsx` |
+| Live Cameras | Hardcoded YouTube embeds | **Real streams** | `live-media-panel.tsx` |
 
 ## Detailed Breakdown
 
-### War Events (MOCK)
+### War Events (REAL)
 
-**Current source**: `simulateEvents()` in `server/data-fetcher.ts`
+**Source**: War events come from two real-time sources in `server/data-fetcher.ts`:
 
-Every 15-30 seconds, the background fetcher randomly picks one of 5 event templates and creates a new event with a randomized location offset:
+1. **Oref alerts** (`fetchOrefAlerts()`, every 5s): Each Pikud HaOref alert creates a corresponding `air_raid_alert` war event with geolocated coordinates from the 38-city `CITY_COORDS` lookup table.
 
-| Template | Type | Origin | Location Variance |
-|----------|------|--------|-------------------|
-| Iranian missile | `missile_launch` | Isfahan, Iran | +/- 1 degree lat/lng |
-| Iron Dome interception | `missile_intercept` | Southern Israel | +/- 0.5 degree |
-| Red Alert northern Israel | `air_raid_alert` | Upper Galilee | +/- 0.3 degree |
-| UAV swarm from Lebanon | `drone_launch` | South Lebanon | +/- 0.3 degree |
-| Gaza rockets | `missile_launch` | Northern Gaza | +/- 0.1 degree |
+2. **RSS.app AI classification** (`fetchRSSAppFeeds()`, every 60s): RSS feed items are classified by GPT-4o-mini into war event types. For batches of ≤5 items, `classifyEvent()` extracts event type and threat level. These events have `aiClassified: true`.
 
 Each event gets a UUID and current timestamp. Events are broadcast to WebSocket clients and persisted to PostgreSQL.
-
-**To make real**: Replace `simulateEvents()` with a function that fetches from real intelligence APIs or OSINT feeds. The `fetchViaProxy()` helper is ready for geo-restricted Israeli sources.
 
 ### Seed Data (MOCK)
 
@@ -70,37 +65,45 @@ Runs once on first startup (when DB is empty). Creates:
 
 All seed data is English-only. Translations happen at the UI level for labels and categories, but event titles/descriptions remain in English.
 
-### News Items (MOCK)
+### News Items (REAL)
 
-**Current source**: Seed data only. No background fetcher creates new news items.
+**Source**: `fetchRSSAppFeeds()` in `server/data-fetcher.ts`, polls every 60 seconds. Also receives instant push via webhook.
 
-**To make real**: Add a new `DataSourceConfig` entry in `data-fetcher.ts` that fetches from news APIs:
-- RSS feeds from Israeli news sites (via proxy)
-- Reuters/AP news APIs
-- Telegram channel scrapers
+Uses RSS.app Premium API to fetch all configured Telegram/OSINT feeds:
+1. Lists all feeds via `GET /v1/feeds`
+2. Fetches items for each feed via `GET /v1/feeds/{id}/items`
+3. Deduplicates using in-memory `seenGuids` set (max 1000 entries)
+4. Detects breaking news via keyword matching (צבע אדום, BREAKING, عاجل, etc.)
+5. For batches ≤5 items, runs AI classification to extract war events
 
-### Alerts / Oref (MOCK)
+**Webhook**: `POST /api/webhooks/rss` receives instant push from RSS.app when new items arrive.
 
-**Current source**: Seed data only. No background fetcher creates new alerts.
+**Requires**: `RSSAPP_API_KEY` and `RSSAPP_API_SECRET` env vars.
 
-**To make real**: Add a data source that polls the Pikud HaOref (Home Front Command) API:
-- Real API: `https://www.oref.org.il/WarningMessages/alert/alerts.json`
-- Requires Israeli IP (use proxy server)
-- Returns JSON array of active alerts with area codes
+### Alerts / Oref (REAL)
 
-### AI Summary (MOCK)
+**Source**: `fetchOrefAlerts()` in `server/data-fetcher.ts`, polls every 5 seconds.
 
-**Current source**: `refreshAISummary()` in `server/data-fetcher.ts`, runs every 60 seconds.
+Fetches from `https://www.oref.org.il/WarningMessages/alert/alerts.json` via Tailscale VPN proxy.
+- Requires `PROXY_BASE_URL` env var pointing to the Tailscale proxy (e.g., `http://100.81.32.3:3080`)
+- Uses 38-city coordinate lookup table (`CITY_COORDS`) to geolocate alerts on the map
+- Each alert also creates a corresponding `air_raid_alert` war event
+- War events are broadcast via WebSocket to all connected clients
+- Returns empty when no active alerts (Oref returns empty string or `[]`)
 
-This is NOT powered by an actual LLM. It constructs a summary using string templates filled with computed values:
-- Counts active alerts from DB
-- Calculates interception rate from event ratios
-- Sets threat level based on alert count (>2 = critical, >0 = high, else medium)
-- Fills in a pre-written paragraph template with these numbers
+### AI Summary (REAL)
 
-**To make real**: Replace `refreshAISummary()` with a call to OpenAI/Anthropic API, passing current events and alerts as context.
+**Source**: `refreshAISummary()` in `server/data-fetcher.ts`, runs every 120 seconds.
 
-### Statistics (DERIVED FROM MOCK)
+Uses OpenAI GPT-4o-mini with structured JSON output:
+- Reads last 15 war events + last 10 news items from DB
+- System prompt: military intelligence analyst persona
+- Output: `{ summary, threatAssessment, keyPoints, recommendation }`
+- `response_format: { type: "json_object" }` for reliable parsing
+- Temperature: 0.3, max_tokens: 1500
+- Requires `OPENAI_API_KEY` env var
+
+### Statistics (DERIVED)
 
 **Source**: `DatabaseStorage.getStatistics()` in `server/storage.ts`
 
@@ -114,7 +117,42 @@ Statistics are computed on every API call by aggregating `war_events`:
   - "David's Sling" / "David" -> `davidsSling`
   - "THAAD" -> `thaad`
 
-Since the underlying events are simulated, statistics are derived from mock data.
+### Marine Traffic (CONFIGURED — needs API key)
+
+**Source**: `fetchMarineTraffic()` in `server/data-fetcher.ts`, polls every 5 minutes.
+
+Tracks naval vessels in the Red Sea and Eastern Mediterranean:
+- Bounding box: lat 10-40, lng 25-55
+- Filters for military vessel types (codes 35, 55) and strategic tankers (80, 81)
+- Creates `naval_movement` war events (max 20 per cycle)
+- Replaces old naval events each cycle (not additive)
+- Requires `MARINETRAFFIC_API_KEY` env var
+
+### ADS-B Exchange (CONFIGURED — needs API key)
+
+**Source**: `fetchADSBExchange()` in `server/data-fetcher.ts`, polls every 60 seconds.
+
+Tracks aircraft transponders over conflict zones:
+- Centered on lat 32, lng 35, radius 500nm
+- Filters: military aircraft (`mil=1`, F-* / C-* / KC-* type prefixes) or altitude ≥ 20,000 ft
+- Bounding box: lat 25-40, lng 25-55
+- Creates `aircraft_tracking` war events (max 50 per cycle)
+- Replaces old aircraft events each cycle
+- Requires `ADSBX_API_KEY` env var
+
+### Sentinel Hub Satellite Imagery (CONFIGURED — needs API key)
+
+**Source**: `fetchSentinelImagery()` in `server/data-fetcher.ts`, runs every 60 minutes.
+
+Fetches Sentinel-2 L2A satellite imagery for recent strike locations:
+- Scans last 24h of `missile_hit` and `explosion` events
+- Builds 0.1° bounding box around each event
+- Auth: prefers OAuth2 (client_credentials), falls back to legacy API key (PLAK...)
+- With OAuth: uses Catalog API for precise imagery search (cloud cover <30%)
+- Without OAuth: goes straight to WMS with date range
+- Stores imagery URLs in `satellite_images` table
+- Tiles proxied via `/api/satellite-images/:id/tile` to avoid exposing credentials
+- Requires `SENTINELHUB_INSTANCE_ID` (minimum), optionally `SENTINELHUB_CLIENT_ID` + `SENTINELHUB_CLIENT_SECRET` for OAuth
 
 ### TV Channels (REAL STREAMS)
 
@@ -153,42 +191,20 @@ Same caveats as TV channels: YouTube embed IDs may change over time.
 
 ## Proxy Server Infrastructure
 
-The proxy server at `proxy-server/index.js` is built and ready but not currently connected to any data source. It is designed for:
-
-1. Fetching from Israeli news APIs that require Israeli IPs
-2. Bypassing CORS restrictions
-3. Adding Hebrew-locale headers for proper content
+The proxy server at `proxy-server/index.js` is **active** and used for Oref alert fetching. It runs on a VPS with an Israeli IP, accessed via Tailscale VPN.
 
 **Usage in code**:
 ```typescript
-// In data-fetcher.ts - the helper exists but no source calls it yet
+// In data-fetcher.ts - used by fetchOrefAlerts() every 5 seconds
 const response = await fetchViaProxy("https://www.oref.org.il/...");
 ```
 
 **Environment variables needed**:
-- `PROXY_BASE_URL` = `http://195.20.17.179:3128` (or wherever deployed)
+- `PROXY_BASE_URL` = `http://100.81.32.3:3080` (Tailscale VPN address)
 - `PROXY_AUTH_TOKEN` = Bearer token for authentication
 
-## Roadmap: Connecting Real Data Sources
+See `docs/proxy-server.md` for setup details.
 
-To replace mock data with real data, add entries to the `dataSources` array in `server/data-fetcher.ts`:
+## Adding New Data Sources
 
-```typescript
-{
-  name: "oref-alerts",
-  enabled: true,
-  fetchIntervalMs: 5000,    // poll every 5 seconds
-  proxyRequired: true,
-  fetchFn: async () => {
-    const res = await fetchViaProxy("https://www.oref.org.il/WarningMessages/alert/alerts.json");
-    const data = await res.json();
-    // Transform and save to storage
-  },
-}
-```
-
-Each source needs:
-- `name`: Unique identifier
-- `fetchIntervalMs`: How often to poll
-- `proxyRequired`: Whether to route through the Israeli proxy
-- `fetchFn`: Async function that fetches, transforms, and persists data
+To add a new data source, register it in the `dataSources` array in `server/data-fetcher.ts`. See `docs/extending.md` for the full guide and `docs/data-fetcher-internals.md` for architecture details.

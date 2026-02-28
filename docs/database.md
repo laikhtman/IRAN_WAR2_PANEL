@@ -22,6 +22,7 @@ Stores individual security events (missile launches, interceptions, alerts, etc.
 | `timestamp` | `text` | Not Null | ISO 8601 timestamp string |
 | `threatLevel` | `varchar(20)` | Not Null | One of: `critical`, `high`, `medium`, `low` |
 | `verified` | `boolean` | Not Null, Default: false | Whether the event is confirmed |
+| `ai_classified` | `boolean` | Not Null, Default: false | Whether the event was classified by AI |
 
 Auto-cleanup: The storage layer automatically prunes events beyond 500 total, keeping the newest.
 
@@ -38,6 +39,7 @@ News headlines and articles.
 | `url` | `text` | Nullable | Link to original article |
 | `category` | `varchar(100)` | Not Null | Category: Military, Diplomacy, Defense, etc. |
 | `breaking` | `boolean` | Not Null, Default: false | Whether this is breaking news |
+| `sentiment` | `real` | Nullable | AI sentiment score (-1.0 to 1.0) |
 
 ### `alerts`
 
@@ -79,6 +81,20 @@ Tracks health and configuration of external data fetcher sources.
 | `lastError` | `text` | Nullable | Last error message |
 | `enabled` | `boolean` | Not Null, Default: true | Whether source is active |
 | `fetchIntervalSeconds` | `serial` | Not Null | Polling interval |
+
+### `satellite_images`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `varchar` | Primary Key | Unique identifier (format: `sat-{eventId}`) |
+| `event_id` | `varchar` | Nullable | Associated war event ID |
+| `image_url` | `text` | Not Null | Sentinel Hub WMS URL for the tile |
+| `bbox_west` | `real` | Not Null | Bounding box west longitude |
+| `bbox_south` | `real` | Not Null | Bounding box south latitude |
+| `bbox_east` | `real` | Not Null | Bounding box east longitude |
+| `bbox_north` | `real` | Not Null | Bounding box north latitude |
+| `captured_at` | `text` | Not Null | ISO timestamp of image capture |
+| `created_at` | `text` | Not Null | ISO timestamp of record creation |
 
 ## Zod Validation Schemas
 
@@ -139,3 +155,21 @@ When modifying the schema in `shared/schema.ts`:
 3. Update the `IStorage` interface in `server/storage.ts` if adding new CRUD operations
 4. Run `npm run db:push` to sync the schema to PostgreSQL
 5. Never manually write SQL migrations
+
+## Indexes
+
+| Index | Table | Column(s) | Purpose |
+|-------|-------|-----------|----------|
+| `idx_events_timestamp` | war_events | timestamp DESC | Speed up latest-first queries |
+| `idx_news_timestamp` | news_items | timestamp DESC | Speed up latest-first queries |
+| `idx_alerts_timestamp` | alerts | timestamp DESC | Speed up latest-first queries |
+| `idx_alerts_active` | alerts | active | Filter active alerts efficiently |
+
+## Row Pruning Limits
+
+| Table | Max Rows |
+|-------|---------|
+| `war_events` | 500 |
+| `news_items` | 500 |
+| `alerts` | 200 |
+| `ai_summaries` | 50 |

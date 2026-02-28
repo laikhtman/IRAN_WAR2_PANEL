@@ -4,6 +4,23 @@ All API routes are defined in `server/routes.ts`. The server runs on the same po
 
 ## REST Endpoints
 
+## Rate Limiting
+
+All API endpoints are rate-limited to **100 requests per IP per minute** via `express-rate-limit`. Exceeding the limit returns:
+
+- **HTTP 429**: `{ "error": "Too many requests, please try again later." }`
+
+## Error Responses
+
+All endpoints may return these error responses:
+
+| Status | Body | When |
+|--------|------|------|
+| `429` | `{ "error": "Too many requests, please try again later." }` | Rate limit exceeded |
+| `500` | `{ "error": "Internal server error" }` | Unhandled server error |
+
+Successful responses always return JSON with HTTP 200.
+
 ### GET /api/events
 
 Returns recent war events, ordered by timestamp (newest first). Maximum 200 events.
@@ -118,16 +135,129 @@ Returns the latest AI situation analysis. If none exists, generates one automati
 
 ### GET /api/health
 
-System health check.
+Basic health check.
 
 **Response**:
 
 ```json
 {
   "status": "ok",
-  "seeded": true,
+  "database": "populated",
   "timestamp": "2026-02-28T10:30:00.000Z"
 }
+```
+
+### GET /api/system-health
+
+Comprehensive system health check. Returns status of database, environment variables, data source fetchers, and WebSocket connections.
+
+**Response**: `SystemHealth`
+
+```json
+{
+  "timestamp": "2026-02-28T10:30:00.000Z",
+  "database": {
+    "status": "ok",
+    "error": "",
+    "counts": {
+      "events": 142,
+      "news": 87,
+      "alerts": 23,
+      "satellite": 2
+    }
+  },
+  "envVars": {
+    "DATABASE_URL": "configured",
+    "OPENAI_API_KEY": "configured",
+    "PROXY_BASE_URL": "configured",
+    "PROXY_AUTH_TOKEN": "configured",
+    "RSSAPP_API_KEY": "configured",
+    "RSSAPP_API_SECRET": "configured",
+    "MARINETRAFFIC_API_KEY": "missing",
+    "ADSBX_API_KEY": "missing",
+    "SENTINELHUB_CLIENT_ID": "missing",
+    "SENTINELHUB_CLIENT_SECRET": "missing",
+    "SENTINELHUB_INSTANCE_ID": "missing",
+    "SENTINELHUB_API_KEY": "missing"
+  },
+  "dataSources": [
+    {
+      "name": "oref-alerts",
+      "enabled": true,
+      "fetchIntervalMs": 5000,
+      "status": "ok",
+      "missingEnvVars": [],
+      "health": {
+        "lastRunAt": "2026-02-28T10:30:00.000Z",
+        "lastSuccessAt": "2026-02-28T10:30:00.000Z",
+        "lastError": null,
+        "runCount": 1420,
+        "errorCount": 3
+      }
+    }
+  ],
+  "webSocket": {
+    "connectedClients": 12
+  }
+}
+```
+
+Data source `status` values:
+- `ok` — running successfully
+- `error` — last run failed (check `health.lastError`)
+- `not_configured` — required env vars missing
+- `no_data` — enabled but hasn't run yet
+
+### GET /api/news/sentiment
+
+Returns aggregated sentiment data for recent news items.
+
+**Response**: `SentimentResponse`
+
+```json
+{
+  "average": -0.42,
+  "trend": "escalating",
+  "sampleSize": 15
+}
+```
+
+### GET /api/satellite-images
+
+Returns satellite imagery metadata for recent strike locations.
+
+**Response**: `SatelliteImage[]`
+
+```json
+[
+  {
+    "id": "sat-uuid",
+    "eventId": "event-uuid",
+    "imageUrl": "https://services.sentinel-hub.com/ogc/wms/...",
+    "bboxWest": 34.75,
+    "bboxSouth": 31.45,
+    "bboxEast": 34.85,
+    "bboxNorth": 31.55,
+    "capturedAt": "2026-02-28T08:00:00.000Z",
+    "createdAt": "2026-02-28T10:30:00.000Z"
+  }
+]
+```
+
+### GET /api/satellite-images/:id/tile
+
+Proxies the actual satellite image tile from Sentinel Hub. Returns `image/png` binary data. Cached for 1 hour. Returns 404 if image ID not found, 502 if upstream fetch fails.
+
+### POST /api/webhooks/rss
+
+Receives push notifications from RSS.app when new feed items arrive. Handles various content types (JSON, text, rawBody).
+
+**Request Body**: RSS.app webhook JSON payload (flexible schema)
+
+**Response**:
+
+```json
+{ "ok": true, "ingested": 3 }
 ```
 
 ## WebSocket
@@ -164,7 +294,7 @@ ws.onmessage = (event) => {
 };
 ```
 
-**Reconnection**: The frontend does not currently implement automatic reconnection. If the WS connection drops, data continues flowing via REST polling.
+**Reconnection**: The frontend implements automatic reconnection with exponential backoff. If the WS connection drops, data continues flowing via REST polling (React Query refetchInterval).
 
 ## Frontend Polling Intervals
 
@@ -175,3 +305,6 @@ ws.onmessage = (event) => {
 | `/api/news` | 15,000ms | `["/api/news"]` |
 | `/api/alerts` | 8,000ms | `["/api/alerts"]` |
 | `/api/ai-summary` | 30,000ms | `["/api/ai-summary"]` |
+| `/api/news/sentiment` | 30,000ms | `["/api/news/sentiment"]` |
+| `/api/satellite-images` | 60,000ms | `["/api/satellite-images"]` |
+| `/api/system-health` | 15,000ms | `["/api/system-health"]` |

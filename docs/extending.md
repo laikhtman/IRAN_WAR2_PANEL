@@ -56,6 +56,46 @@ onNewEvent?.(newEvent);  // Broadcasts to all connected clients
 
 For non-event data (news, alerts), the frontend will pick it up via its next polling cycle.
 
+## Adding a Background Job / Data Source
+
+The data fetcher now includes automatic health tracking. When you add a new source:
+
+### Step 1: Write the Fetch Function
+
+```typescript
+async function myFetchFunction(): Promise<void> {
+  // Your fetch logic here
+}
+```
+
+### Step 2: Register with Health Tracking
+
+Add to the `dataSources` array in `server/data-fetcher.ts`:
+
+```typescript
+{
+  name: "my-new-source",
+  enabled: true,
+  fetchIntervalMs: 60000,
+  proxyRequired: false,
+  fetchFn: myFetchFunction,
+  requiredEnvVars: ["MY_API_KEY"],
+}
+```
+
+### Step 3: Automatic Features
+
+Once registered, your source automatically gets:
+- **Health tracking**: `recordSourceRun()` wraps every call, tracking success/failure counts
+- **Health page visibility**: appears on `/health` page and `/api/system-health` endpoint
+- **Env var checking**: `requiredEnvVars` are validated; missing vars show as "not_configured"
+- **Error logging**: failures are logged with `[data-fetcher]` prefix
+
+### Step 4: Add Environment Variables
+
+1. Add required env vars to `.env.example` with descriptive comments
+2. Document in `docs/env-vars.md`
+
 ## Adding a New Dashboard Component
 
 ### Step 1: Create the Component
@@ -192,7 +232,7 @@ General pattern:
 - `server/vite.ts` - Vite dev server integration
 - `vite.config.ts` - Vite build configuration
 - `drizzle.config.ts` - Drizzle migration configuration
-- `package.json` - Use package management tools instead of manual edits
+- `package.json` - Use package management tools (`npm install`) instead of manual edits. Direct editing may be needed when adding npm scripts.
 
 ## Performance Considerations
 
