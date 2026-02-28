@@ -1,0 +1,19 @@
+[Unit]
+Description=IRAN WAR2 PANEL (Staging)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/iran-panel-staging
+EnvironmentFile=/opt/iran-panel-staging/.env
+ExecStart=/usr/bin/node dist/index.cjs
+Restart=on-failure
+RestartSec=5
+# Output to syslog
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=iran-panel-staging
+
+[Install]
+WantedBy=multi-user.target
