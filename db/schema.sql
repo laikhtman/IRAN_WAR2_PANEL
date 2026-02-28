@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS war_events (
     source          VARCHAR(200)    NOT NULL,
     timestamp       TEXT            NOT NULL,           -- ISO 8601 string
     threat_level    VARCHAR(20)     NOT NULL,           -- critical, high, medium, low
-    verified        BOOLEAN         NOT NULL DEFAULT FALSE
+    verified        BOOLEAN         NOT NULL DEFAULT FALSE,
+    ai_classified   BOOLEAN         NOT NULL DEFAULT FALSE
 );
 
 CREATE INDEX IF NOT EXISTS idx_war_events_timestamp ON war_events (timestamp DESC);
@@ -42,7 +43,8 @@ CREATE TABLE IF NOT EXISTS news_items (
     timestamp       TEXT            NOT NULL,           -- ISO 8601 string
     url             TEXT,                               -- nullable, link to original
     category        VARCHAR(100)    NOT NULL,
-    breaking        BOOLEAN         NOT NULL DEFAULT FALSE
+    breaking        BOOLEAN         NOT NULL DEFAULT FALSE,
+    sentiment       REAL
 );
 
 CREATE INDEX IF NOT EXISTS idx_news_items_timestamp ON news_items (timestamp DESC);
@@ -92,6 +94,22 @@ CREATE TABLE IF NOT EXISTS data_source_status (
     last_error              TEXT,
     enabled                 BOOLEAN         NOT NULL DEFAULT TRUE,
     fetch_interval_seconds  SERIAL          NOT NULL
+);
+
+
+-- ─── 6. Satellite Images ────────────────────────────────────────────────────
+-- Sentinel Hub satellite imagery linked to war events.
+
+CREATE TABLE IF NOT EXISTS satellite_images (
+    id              VARCHAR         PRIMARY KEY,
+    event_id        VARCHAR,
+    image_url       TEXT            NOT NULL,
+    bbox_west       REAL            NOT NULL,
+    bbox_south      REAL            NOT NULL,
+    bbox_east       REAL            NOT NULL,
+    bbox_north      REAL            NOT NULL,
+    captured_at     TEXT            NOT NULL,
+    created_at      TEXT            NOT NULL DEFAULT (now()::text)
 );
 
 

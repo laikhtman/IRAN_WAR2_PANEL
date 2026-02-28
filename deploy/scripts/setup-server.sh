@@ -15,7 +15,9 @@ echo "[2/6] Configuring PostgreSQL..."
 systemctl enable --now postgresql
 
 # Create database and user if they don't exist
-sudo -u postgres psql -c "SELECT 1 FROM pg_roles WHERE rolname='war_panel_user'" | grep -q 1 || sudo -u postgres psql -c "CREATE USER war_panel_user WITH PASSWORD 'warpanel_strongpass_123';"
+# We use the password from the environment setup before running the script
+DB_PASS=${DB_PASSWORD:-"warpanel_strongpass_123"}
+sudo -u postgres psql -c "SELECT 1 FROM pg_roles WHERE rolname='war_panel_user'" | grep -q 1 || sudo -u postgres psql -c "CREATE USER war_panel_user WITH PASSWORD '${DB_PASS}';"
 sudo -u postgres psql -c "SELECT 1 FROM pg_database WHERE datname='war_panel_staging'" | grep -q 1 || sudo -u postgres psql -c "CREATE DATABASE war_panel_staging OWNER war_panel_user;"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE war_panel_staging TO war_panel_user;"
 
@@ -31,13 +33,22 @@ cd $APP_DIR
 git fetch origin
 git reset --hard origin/deploy/staging-setup
 
-echo "[4/6] Creating .env file..."
-# Create a .env file for staging
-cat > $APP_DIR/.env << EOL
-DATABASE_URL=postgresql://war_panel_user:warpanel_strongpass_123@localhost:5432/war_panel_staging
+echo "[4/6] Setting up .env file..."
+# To secure credentials, .env should be copied from local or managed outside this repository script.
+if [ -f "/root/staging.env" ]; then
+    cp /root/staging.env $APP_DIR/.env
+elif [ ! -f "$APP_DIR/.env" ]; then
+    echo "Warning: No .env file found. Creating a template..."
+    cat > $APP_DIR/.env << EOL
+DATABASE_URL=postgresql://war_panel_user:${DB_PASS}@localhost:5432/war_panel_staging
 PORT=5000
 PROXY_BASE_URL=http://100.81.32.3:3080
+# REDACTED API KEYS - POPULATE MANUALLY OR COPY VIA SCP
+OPENAI_API_KEY=
+RSSAPP_API_KEY=
+RSSAPP_API_SECRET=
 EOL
+fi
 
 echo "[5/6] Building application..."
 npm ci

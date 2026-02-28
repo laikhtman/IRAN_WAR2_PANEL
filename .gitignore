@@ -1,7 +1,9 @@
 node_modules
 dist
 .env
+.credentials
 .DS_Store
 server/public
 vite.config.ts.*
 *.tar.gz
+intelhq_nginx.txt

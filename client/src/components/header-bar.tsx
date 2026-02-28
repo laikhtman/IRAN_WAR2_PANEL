@@ -2,15 +2,17 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Shield, Radio, Wifi, Activity, Volume2, VolumeX } from "lucide-react";
+import { Shield, Radio, Wifi, Activity, Volume2, VolumeX, Maximize2, Minimize2 } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 
 interface HeaderBarProps {
   isMuted?: boolean;
   onToggleMute?: () => void;
+  isPresentation?: boolean;
+  onTogglePresentation?: () => void;
 }
 
-export function HeaderBar({ isMuted = true, onToggleMute }: HeaderBarProps) {
+export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false, onTogglePresentation }: HeaderBarProps) {
   const { t, i18n } = useTranslation();
   const [time, setTime] = useState(new Date());
   const [israelTime, setIsraelTime] = useState("");
@@ -80,6 +82,21 @@ export function HeaderBar({ isMuted = true, onToggleMute }: HeaderBarProps) {
               <VolumeX className="w-3.5 h-3.5 text-muted-foreground" />
             ) : (
               <Volume2 className="w-3.5 h-3.5 text-red-400" />
+            )}
+          </Button>
+        )}
+        {onTogglePresentation && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={onTogglePresentation}
+            title={isPresentation ? "Exit Presentation" : "Enter Presentation"}
+          >
+            {isPresentation ? (
+              <Minimize2 className="w-3.5 h-3.5 text-primary" />
+            ) : (
+              <Maximize2 className="w-3.5 h-3.5 text-muted-foreground" />
             )}
           </Button>
         )}

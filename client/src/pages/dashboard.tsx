@@ -9,6 +9,7 @@ import { AlertsPanel } from "@/components/alerts-panel";
 import { NewsFeed } from "@/components/news-feed";
 import { HeaderBar } from "@/components/header-bar";
 import { LiveMediaPanel } from "@/components/live-media-panel";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
@@ -21,6 +22,7 @@ const SIREN_URL = "https://www.oref.org.il/Shared/alarm/Impact.mp3";
 export default function Dashboard() {
   const [wsEvents, setWsEvents] = useState<WarEvent[]>([]);
   const [isMuted, setIsMuted] = useState(true);
+  const [isPresentation, setIsPresentation] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isMutedRef = useRef(isMuted);
@@ -45,6 +47,26 @@ export default function Dashboard() {
 
   const handleToggleMute = useCallback(() => {
     setIsMuted(prev => !prev);
+  }, []);
+
+  const handleTogglePresentation = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+      setIsPresentation(true);
+    } else {
+      document.exitFullscreen().catch(() => {});
+      setIsPresentation(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      if (!document.fullscreenElement) {
+        setIsPresentation(false);
+      }
+    };
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
   const { data: events } = useQuery<WarEvent[]>({
@@ -134,7 +156,8 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col h-screen bg-background grid-overlay" data-testid="dashboard">
-      <HeaderBar isMuted={isMuted} onToggleMute={handleToggleMute} />
+      <HeaderBar isMuted={isMuted} onToggleMute={handleToggleMute} isPresentation={isPresentation} onTogglePresentation={handleTogglePresentation} />
+      <KeyboardShortcuts onToggleMute={handleToggleMute} onTogglePresentation={handleTogglePresentation} />
 
       <div className="flex-1 flex min-h-0">
         <div className="flex-1 flex flex-col min-w-0">
@@ -177,9 +200,9 @@ export default function Dashboard() {
             )}
           </div>
 
-          {!isMobile && <LiveMediaPanel />}
+          {!isPresentation && !isMobile && <LiveMediaPanel />}
 
-          <NewsTicker news={news || []} />
+          {!isPresentation && <NewsTicker news={news || []} />}
         </div>
 
         {/* Desktop: right sidebar with event feed, AI summary, alerts, news */}
