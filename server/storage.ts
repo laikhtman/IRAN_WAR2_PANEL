@@ -1,426 +1,101 @@
+import { db } from "./db";
+import { eq, desc, sql } from "drizzle-orm";
+import { warEvents, newsItems, alerts, aiSummaries } from "@shared/schema";
 import type { WarEvent, Statistics, NewsItem, Alert, AISummary } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
   getEvents(): Promise<WarEvent[]>;
   addEvent(event: WarEvent): Promise<WarEvent>;
+  addEvents(events: WarEvent[]): Promise<void>;
   getStatistics(): Promise<Statistics>;
   getNews(): Promise<NewsItem[]>;
+  addNews(items: NewsItem[]): Promise<void>;
   getAlerts(): Promise<Alert[]>;
+  addAlerts(alertList: Alert[]): Promise<void>;
+  updateAlert(id: string, active: boolean): Promise<void>;
   getAISummary(): Promise<AISummary>;
+  setAISummary(summary: AISummary): Promise<void>;
+  isSeeded(): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private events: WarEvent[] = [];
-  private news: NewsItem[] = [];
-  private alerts: Alert[] = [];
-
-  constructor() {
-    this.seedData();
-  }
-
-  private seedData() {
-    const now = new Date();
-    const minutesAgo = (m: number) => new Date(now.getTime() - m * 60000).toISOString();
-
-    this.events = [
-      {
-        id: randomUUID(),
-        type: "missile_launch",
-        title: "Ballistic missile launched from southern Iran",
-        description: "Medium-range ballistic missile detected launching from launch site near Shiraz heading northwest",
-        location: "Shiraz, Iran",
-        lat: 29.5918,
-        lng: 52.5836,
-        country: "Iran",
-        source: "Satellite Detection",
-        timestamp: minutesAgo(3),
-        threatLevel: "critical",
-        verified: true,
-      },
-      {
-        id: randomUUID(),
-        type: "missile_intercept",
-        title: "Arrow-3 successful interception over Jordan",
-        description: "Israeli Arrow-3 system intercepted incoming ballistic missile at high altitude over Jordanian airspace",
-        location: "Jordanian Airspace",
-        lat: 31.9,
-        lng: 36.0,
-        country: "Jordan",
-        source: "IDF Spokesperson",
-        timestamp: minutesAgo(2),
-        threatLevel: "high",
-        verified: true,
-      },
-      {
-        id: randomUUID(),
-        type: "drone_launch",
-        title: "Multiple drone swarm detected from Iraq",
-        description: "Cluster of 15+ UAVs detected launching from militia-controlled area in western Iraq",
-        location: "Al-Qa'im, Iraq",
-        lat: 34.3767,
-        lng: 41.0744,
-        country: "Iraq",
-        source: "Radar Detection",
-        timestamp: minutesAgo(8),
-        threatLevel: "high",
-        verified: true,
-      },
-      {
-        id: randomUUID(),
-        type: "missile_launch",
-        title: "Cruise missiles launched from Yemen",
-        description: "Houthi forces launched 3 cruise missiles toward Eilat from Sanaa region",
-        location: "Sanaa, Yemen",
-        lat: 15.3694,
-        lng: 44.191,
-        country: "Yemen",
-        source: "CENTCOM",
-        timestamp: minutesAgo(12),
-        threatLevel: "critical",
-        verified: true,
-      },
-      {
-        id: randomUUID(),
-        type: "missile_intercept",
-        title: "Iron Dome intercepts rockets from Gaza",
-        description: "Iron Dome system successfully intercepted 8 out of 10 rockets launched from northern Gaza Strip",
-        location: "Sderot, Israel",
-        lat: 31.5246,
-        lng: 34.5968,
-        country: "Israel",
-        source: "IDF Spokesperson",
-        timestamp: minutesAgo(5),
-        threatLevel: "high",
-        verified: true,
-      },
-      {
-        id: randomUUID(),
-        type: "air_raid_alert",
-        title: "Red Alert - Tel Aviv metropolitan area",
-        description: "Sirens sounding in Tel Aviv and surrounding areas. Residents instructed to enter shelters",
-        location: "Tel Aviv, Israel",
-        lat: 32.0853,
-        lng: 34.7818,
-        country: "Israel",
-        source: "Pikud HaOref",
-        timestamp: minutesAgo(1),
-        threatLevel: "critical",
-        verified: true,
-      },
-      {
-        id: randomUUID(),
-        type: "missile_launch",
-        title: "Rockets fired from southern Lebanon",
-        description: "Hezbollah launched approximately 20 rockets toward northern Israel from Tyre area",
-        location: "Tyre, Lebanon",
-        lat: 33.2705,
-        lng: 35.1966,
-        country: "Lebanon",
-        source: "UNIFIL",
-        timestamp: minutesAgo(15),
-        threatLevel: "high",
-        verified: true,
-      },
-      {
-        id: randomUUID(),
-        type: "missile_intercept",
-        title: "David's Sling intercepts medium-range missile",
-        description: "David's Sling system intercepted medium-range rocket over Haifa Bay area",
-        location: "Haifa, Israel",
-        lat: 32.7940,
-        lng: 34.9896,
-        country: "Israel",
-        source: "IDF Spokesperson",
-        timestamp: minutesAgo(14),
-        threatLevel: "medium",
-        verified: true,
-      },
-      {
-        id: randomUUID(),
-        type: "explosion",
-        title: "Explosion reported near Damascus International Airport",
-        description: "Large explosion reported near Damascus International Airport. Cause under investigation",
-        location: "Damascus, Syria",
-        lat: 33.4114,
-        lng: 36.5153,
-        country: "Syria",
-        source: "SOHR",
-        timestamp: minutesAgo(22),
-        threatLevel: "medium",
-        verified: false,
-      },
-      {
-        id: randomUUID(),
-        type: "drone_intercept",
-        title: "US Navy shoots down drone over Red Sea",
-        description: "USS Carney destroyer intercepted armed drone approaching coalition shipping in Red Sea",
-        location: "Red Sea",
-        lat: 15.5,
-        lng: 41.0,
-        country: "International Waters",
-        source: "CENTCOM",
-        timestamp: minutesAgo(30),
-        threatLevel: "medium",
-        verified: true,
-      },
-      {
-        id: randomUUID(),
-        type: "military_operation",
-        title: "IDF ground operation in Rafah continues",
-        description: "Israeli forces conducting targeted operations in eastern Rafah, multiple engagements reported",
-        location: "Rafah, Gaza",
-        lat: 31.2850,
-        lng: 34.2447,
-        country: "Palestine",
-        source: "IDF Spokesperson",
-        timestamp: minutesAgo(45),
-        threatLevel: "high",
-        verified: true,
-      },
-      {
-        id: randomUUID(),
-        type: "missile_launch",
-        title: "Anti-ship missile launched toward Strait of Hormuz",
-        description: "IRGC Navy launched anti-ship missile during exercises near Strait of Hormuz",
-        location: "Strait of Hormuz",
-        lat: 26.5667,
-        lng: 56.25,
-        country: "Iran",
-        source: "OSINT",
-        timestamp: minutesAgo(60),
-        threatLevel: "medium",
-        verified: false,
-      },
-      {
-        id: randomUUID(),
-        type: "sirens",
-        title: "Sirens activated in Kiryat Shmona",
-        description: "Sirens activated in Kiryat Shmona and surrounding communities in Upper Galilee",
-        location: "Kiryat Shmona, Israel",
-        lat: 33.2073,
-        lng: 35.5707,
-        country: "Israel",
-        source: "Pikud HaOref",
-        timestamp: minutesAgo(7),
-        threatLevel: "critical",
-        verified: true,
-      },
-      {
-        id: randomUUID(),
-        type: "missile_hit",
-        title: "Rocket impact in open area near Ashkelon",
-        description: "One rocket impact reported in open area near Ashkelon. No casualties reported",
-        location: "Ashkelon, Israel",
-        lat: 31.6688,
-        lng: 34.5743,
-        country: "Israel",
-        source: "Israel Police",
-        timestamp: minutesAgo(4),
-        threatLevel: "high",
-        verified: true,
-      },
-      {
-        id: randomUUID(),
-        type: "drone_launch",
-        title: "Reconnaissance drone spotted over Golan Heights",
-        description: "Unidentified reconnaissance UAV detected flying over northern Golan Heights from Syria",
-        location: "Golan Heights",
-        lat: 33.1,
-        lng: 35.8,
-        country: "Israel",
-        source: "IAF",
-        timestamp: minutesAgo(18),
-        threatLevel: "medium",
-        verified: true,
-      },
-    ];
-
-    this.news = [
-      {
-        id: randomUUID(),
-        title: "IDF confirms interception of multiple ballistic missiles from Iran in coordinated defense operation",
-        source: "IDF Spokesperson",
-        timestamp: minutesAgo(2),
-        category: "Military",
-        breaking: true,
-      },
-      {
-        id: randomUUID(),
-        title: "UN Security Council emergency session called following escalation in Middle East",
-        source: "Reuters",
-        timestamp: minutesAgo(5),
-        category: "Diplomacy",
-        breaking: true,
-      },
-      {
-        id: randomUUID(),
-        title: "US CENTCOM confirms joint interception operations with Israeli forces over Jordan",
-        source: "Reuters",
-        timestamp: minutesAgo(8),
-        category: "Military",
-        breaking: true,
-      },
-      {
-        id: randomUUID(),
-        title: "Iron Dome intercepts rocket barrage aimed at central Israel, all threats neutralized",
-        source: "Times of Israel",
-        timestamp: minutesAgo(6),
-        category: "Defense",
-        breaking: false,
-      },
-      {
-        id: randomUUID(),
-        title: "Hezbollah claims responsibility for rocket attacks on northern Israel settlements",
-        source: "Al Jazeera",
-        timestamp: minutesAgo(15),
-        category: "Military",
-        breaking: false,
-      },
-      {
-        id: randomUUID(),
-        title: "Israeli Home Front Command updates shelter guidelines for greater Tel Aviv",
-        source: "Kann News",
-        timestamp: minutesAgo(10),
-        category: "Civil Defense",
-        breaking: false,
-      },
-      {
-        id: randomUUID(),
-        title: "Houthi spokesperson claims new long-range missile capability targeting Israel",
-        source: "Telegram",
-        timestamp: minutesAgo(20),
-        category: "Military",
-        breaking: false,
-      },
-      {
-        id: randomUUID(),
-        title: "IDF conducting precision strikes on Hezbollah positions in southern Lebanon",
-        source: "Channel 12",
-        timestamp: minutesAgo(25),
-        category: "Military",
-        breaking: false,
-      },
-      {
-        id: randomUUID(),
-        title: "Ben Gurion Airport operations temporarily suspended due to security situation",
-        source: "Ynet",
-        timestamp: minutesAgo(12),
-        category: "Infrastructure",
-        breaking: true,
-      },
-      {
-        id: randomUUID(),
-        title: "US deploys additional THAAD battery to support Israeli air defense",
-        source: "Reuters",
-        timestamp: minutesAgo(35),
-        category: "Defense",
-        breaking: false,
-      },
-      {
-        id: randomUUID(),
-        title: "Multiple explosions reported in Damascus suburbs, possibly Israeli strikes",
-        source: "Telegram",
-        timestamp: minutesAgo(40),
-        category: "Military",
-        breaking: false,
-      },
-      {
-        id: randomUUID(),
-        title: "Jordan closes airspace to all civilian traffic amid regional escalation",
-        source: "Al Jazeera",
-        timestamp: minutesAgo(18),
-        category: "Aviation",
-        breaking: false,
-      },
-    ];
-
-    this.alerts = [
-      {
-        id: randomUUID(),
-        area: "Tel Aviv - Gush Dan",
-        threat: "Missile threat - enter shelters immediately",
-        timestamp: minutesAgo(1),
-        active: true,
-        lat: 32.0853,
-        lng: 34.7818,
-      },
-      {
-        id: randomUUID(),
-        area: "Kiryat Shmona - Upper Galilee",
-        threat: "Hostile aircraft intrusion",
-        timestamp: minutesAgo(7),
-        active: true,
-        lat: 33.2073,
-        lng: 35.5707,
-      },
-      {
-        id: randomUUID(),
-        area: "Sderot - Western Negev",
-        threat: "Rocket and missile fire",
-        timestamp: minutesAgo(5),
-        active: true,
-        lat: 31.5246,
-        lng: 34.5968,
-      },
-      {
-        id: randomUUID(),
-        area: "Ashkelon",
-        threat: "Rocket and missile fire",
-        timestamp: minutesAgo(30),
-        active: false,
-        lat: 31.6688,
-        lng: 34.5743,
-      },
-      {
-        id: randomUUID(),
-        area: "Haifa Bay",
-        threat: "Hostile aircraft intrusion",
-        timestamp: minutesAgo(45),
-        active: false,
-        lat: 32.7940,
-        lng: 34.9896,
-      },
-      {
-        id: randomUUID(),
-        area: "Eilat - Arava",
-        threat: "Missile threat from Yemen",
-        timestamp: minutesAgo(60),
-        active: false,
-        lat: 29.5577,
-        lng: 34.9519,
-      },
-    ];
-  }
-
+export class DatabaseStorage implements IStorage {
   async getEvents(): Promise<WarEvent[]> {
-    return [...this.events].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
+    const rows = await db.select().from(warEvents).orderBy(desc(warEvents.timestamp)).limit(200);
+    return rows.map(r => ({
+      id: r.id,
+      type: r.type as WarEvent["type"],
+      title: r.title,
+      description: r.description,
+      location: r.location,
+      lat: r.lat,
+      lng: r.lng,
+      country: r.country,
+      source: r.source,
+      timestamp: r.timestamp,
+      threatLevel: r.threatLevel as WarEvent["threatLevel"],
+      verified: r.verified,
+    }));
   }
 
   async addEvent(event: WarEvent): Promise<WarEvent> {
-    this.events.unshift(event);
-    if (this.events.length > 100) this.events = this.events.slice(0, 100);
+    await db.insert(warEvents).values({
+      id: event.id,
+      type: event.type,
+      title: event.title,
+      description: event.description,
+      location: event.location,
+      lat: event.lat,
+      lng: event.lng,
+      country: event.country,
+      source: event.source,
+      timestamp: event.timestamp,
+      threatLevel: event.threatLevel,
+      verified: event.verified,
+    }).onConflictDoNothing();
+
+    const oldCount = await db.select({ count: sql<number>`count(*)` }).from(warEvents);
+    if (oldCount[0].count > 500) {
+      const oldest = await db.select({ id: warEvents.id }).from(warEvents)
+        .orderBy(warEvents.timestamp).limit(Number(oldCount[0].count) - 500);
+      for (const row of oldest) {
+        await db.delete(warEvents).where(eq(warEvents.id, row.id));
+      }
+    }
+
     return event;
   }
 
-  async getStatistics(): Promise<Statistics> {
-    const missileEvents = this.events.filter(e =>
-      ["missile_launch", "missile_intercept", "missile_hit"].includes(e.type)
-    );
-    const droneEvents = this.events.filter(e =>
-      ["drone_launch", "drone_intercept"].includes(e.type)
-    );
+  async addEvents(events: WarEvent[]): Promise<void> {
+    if (events.length === 0) return;
+    const values = events.map(e => ({
+      id: e.id,
+      type: e.type,
+      title: e.title,
+      description: e.description,
+      location: e.location,
+      lat: e.lat,
+      lng: e.lng,
+      country: e.country,
+      source: e.source,
+      timestamp: e.timestamp,
+      threatLevel: e.threatLevel,
+      verified: e.verified,
+    }));
+    await db.insert(warEvents).values(values).onConflictDoNothing();
+  }
 
-    const launched = this.events.filter(e => e.type === "missile_launch").length;
-    const intercepted = this.events.filter(e => e.type === "missile_intercept").length;
-    const hits = this.events.filter(e => e.type === "missile_hit").length;
-    const dronesLaunched = this.events.filter(e => e.type === "drone_launch").length;
-    const dronesIntercepted = this.events.filter(e => e.type === "drone_intercept").length;
+  async getStatistics(): Promise<Statistics> {
+    const allEvents = await this.getEvents();
+
+    const launched = allEvents.filter(e => e.type === "missile_launch").length;
+    const intercepted = allEvents.filter(e => e.type === "missile_intercept").length;
+    const hits = allEvents.filter(e => e.type === "missile_hit").length;
+    const dronesLaunched = allEvents.filter(e => e.type === "drone_launch").length;
+    const dronesIntercepted = allEvents.filter(e => e.type === "drone_intercept").length;
 
     const byCountry: Record<string, { launched: number; intercepted: number; hits: number }> = {};
-    this.events.forEach(e => {
+    allEvents.forEach(e => {
       if (!byCountry[e.country]) {
         byCountry[e.country] = { launched: 0, intercepted: 0, hits: 0 };
       }
@@ -429,67 +104,157 @@ export class MemStorage implements IStorage {
       if (e.type === "missile_hit") byCountry[e.country].hits++;
     });
 
+    const filteredByCountry: Record<string, { launched: number; intercepted: number; hits: number }> = {};
+    for (const [k, v] of Object.entries(byCountry)) {
+      if (v.launched > 0 || v.intercepted > 0 || v.hits > 0) {
+        filteredByCountry[k] = v;
+      }
+    }
+
     const totalAttempts = launched + dronesLaunched;
     const totalDefended = intercepted + dronesIntercepted;
+    const rate = totalAttempts > 0 ? Math.round((totalDefended / totalAttempts) * 1000) / 10 : 0;
+
+    const activeAlertCount = await db.select({ count: sql<number>`count(*)` })
+      .from(alerts).where(eq(alerts.active, true));
+
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 3600000).toISOString();
+    const recent = allEvents.filter(e => e.timestamp > yesterday);
 
     return {
-      totalMissilesLaunched: launched * 18 + 347,
-      totalIntercepted: intercepted * 15 + 312,
-      totalHits: hits * 3 + 23,
-      totalDronesLaunched: dronesLaunched * 8 + 156,
-      totalDronesIntercepted: dronesIntercepted * 7 + 141,
-      interceptionRate: 94.2,
-      byCountry: {
-        Iran: { launched: 185, intercepted: 178, hits: 7 },
-        Lebanon: { launched: 98, intercepted: 89, hits: 9 },
-        Yemen: { launched: 67, intercepted: 61, hits: 4 },
-        Iraq: { launched: 42, intercepted: 39, hits: 2 },
-        Gaza: { launched: 112, intercepted: 104, hits: 5 },
-      },
+      totalMissilesLaunched: launched,
+      totalIntercepted: intercepted,
+      totalHits: hits,
+      totalDronesLaunched: dronesLaunched,
+      totalDronesIntercepted: dronesIntercepted,
+      interceptionRate: rate,
+      byCountry: filteredByCountry,
       bySystem: {
-        "Iron Dome": 289,
-        "Arrow-2": 45,
-        "Arrow-3": 32,
-        "David's Sling": 67,
-        "THAAD (US)": 18,
-        "Patriot (US)": 23,
+        "Iron Dome": Math.round(intercepted * 0.6),
+        "Arrow-2": Math.round(intercepted * 0.1),
+        "Arrow-3": Math.round(intercepted * 0.07),
+        "David's Sling": Math.round(intercepted * 0.14),
+        "THAAD (US)": Math.round(intercepted * 0.04),
+        "Patriot (US)": Math.round(intercepted * 0.05),
       },
-      activeAlerts: this.alerts.filter(a => a.active).length,
-      last24hEvents: this.events.length,
+      activeAlerts: Number(activeAlertCount[0].count),
+      last24hEvents: recent.length,
     };
   }
 
   async getNews(): Promise<NewsItem[]> {
-    return [...this.news].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
+    const rows = await db.select().from(newsItems).orderBy(desc(newsItems.timestamp)).limit(100);
+    return rows.map(r => ({
+      id: r.id,
+      title: r.title,
+      source: r.source,
+      timestamp: r.timestamp,
+      url: r.url ?? undefined,
+      category: r.category,
+      breaking: r.breaking,
+    }));
+  }
+
+  async addNews(items: NewsItem[]): Promise<void> {
+    if (items.length === 0) return;
+    const values = items.map(n => ({
+      id: n.id,
+      title: n.title,
+      source: n.source,
+      timestamp: n.timestamp,
+      url: n.url ?? null,
+      category: n.category,
+      breaking: n.breaking,
+    }));
+    await db.insert(newsItems).values(values).onConflictDoNothing();
   }
 
   async getAlerts(): Promise<Alert[]> {
-    return [...this.alerts].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
+    const rows = await db.select().from(alerts).orderBy(desc(alerts.timestamp)).limit(50);
+    return rows.map(r => ({
+      id: r.id,
+      area: r.area,
+      threat: r.threat,
+      timestamp: r.timestamp,
+      active: r.active,
+      lat: r.lat,
+      lng: r.lng,
+    }));
+  }
+
+  async addAlerts(alertList: Alert[]): Promise<void> {
+    if (alertList.length === 0) return;
+    const values = alertList.map(a => ({
+      id: a.id,
+      area: a.area,
+      threat: a.threat,
+      timestamp: a.timestamp,
+      active: a.active,
+      lat: a.lat,
+      lng: a.lng,
+    }));
+    await db.insert(alerts).values(values).onConflictDoNothing();
+  }
+
+  async updateAlert(id: string, active: boolean): Promise<void> {
+    await db.update(alerts).set({ active }).where(eq(alerts.id, id));
   }
 
   async getAISummary(): Promise<AISummary> {
-    const activeAlerts = this.alerts.filter(a => a.active).length;
-    const threat = activeAlerts > 2 ? "critical" : activeAlerts > 0 ? "high" : "medium";
-
+    const rows = await db.select().from(aiSummaries).orderBy(desc(aiSummaries.id)).limit(1);
+    if (rows.length === 0) {
+      return this.generateAISummary();
+    }
+    const r = rows[0];
     return {
-      summary: `Current situation assessment indicates a multi-front escalation with active missile and drone threats from Iran, Lebanon, Yemen, and Iraqi militias targeting Israeli territory. Israeli defense systems (Iron Dome, Arrow, David's Sling) are operating at high capacity with a 94.2% interception rate. US CENTCOM forces are providing supplementary defense with THAAD and Patriot systems. ${activeAlerts} active alerts are currently in effect across Israeli territory. The primary threat axis remains Iranian ballistic missiles from the east, with secondary rocket threats from Lebanon in the north and Gaza in the southwest.`,
-      threatAssessment: threat as any,
+      summary: r.summary,
+      threatAssessment: r.threatAssessment as AISummary["threatAssessment"],
+      keyPoints: r.keyPoints,
+      lastUpdated: r.lastUpdated,
+      recommendation: r.recommendation,
+    };
+  }
+
+  async setAISummary(summary: AISummary): Promise<void> {
+    await db.insert(aiSummaries).values({
+      summary: summary.summary,
+      threatAssessment: summary.threatAssessment,
+      keyPoints: summary.keyPoints,
+      lastUpdated: summary.lastUpdated,
+      recommendation: summary.recommendation,
+    });
+  }
+
+  private async generateAISummary(): Promise<AISummary> {
+    const activeAlertCount = await db.select({ count: sql<number>`count(*)` })
+      .from(alerts).where(eq(alerts.active, true));
+    const count = Number(activeAlertCount[0].count);
+    const threat = count > 2 ? "critical" : count > 0 ? "high" : "medium";
+
+    const summary: AISummary = {
+      summary: `Current situation assessment indicates a multi-front escalation with active missile and drone threats from Iran, Lebanon, Yemen, and Iraqi militias targeting Israeli territory. Israeli defense systems (Iron Dome, Arrow, David's Sling) are operating at high capacity. US CENTCOM forces are providing supplementary defense with THAAD and Patriot systems. ${count} active alerts are currently in effect across Israeli territory.`,
+      threatAssessment: threat as AISummary["threatAssessment"],
       keyPoints: [
         "Multi-front engagement: Iran, Lebanon, Yemen, Iraq, and Gaza launching coordinated attacks",
-        "Israeli air defense systems operating at 94.2% interception rate across all platforms",
+        "Israeli air defense systems operating across all platforms",
         "US CENTCOM providing supplementary air defense with THAAD and Patriot deployments",
-        `${activeAlerts} active Pikud HaOref alerts - sheltering instructions in effect for affected areas`,
-        "Ben Gurion Airport operations temporarily suspended; Jordanian airspace closed",
-        "UN Security Council emergency session convened to address escalation",
+        `${count} active Pikud HaOref alerts - sheltering instructions in effect for affected areas`,
+        "Regional airspace restrictions in effect",
+        "UN Security Council monitoring situation",
       ],
       lastUpdated: new Date().toISOString(),
-      recommendation: "Maintain maximum alert posture. All civilians in affected areas should remain in shelters until all-clear is given by Pikud HaOref. Monitor official channels for updated instructions. Avoid unnecessary travel in central and northern Israel.",
+      recommendation: "Maintain maximum alert posture. All civilians in affected areas should remain in shelters until all-clear is given by Pikud HaOref. Monitor official channels for updated instructions.",
     };
+
+    await this.setAISummary(summary);
+    return summary;
+  }
+
+  async isSeeded(): Promise<boolean> {
+    const result = await db.select({ count: sql<number>`count(*)` }).from(warEvents);
+    return Number(result[0].count) > 0;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

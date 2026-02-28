@@ -6,7 +6,8 @@ A real-time intelligence dashboard ("War Panel") for monitoring security events 
 ## Architecture
 - **Frontend**: React + TypeScript, Tailwind CSS, Leaflet for maps
 - **Backend**: Express.js with WebSocket for real-time updates
-- **Storage**: In-memory with seed data (no database - demo/monitoring app)
+- **Database**: PostgreSQL (Neon serverless) via Drizzle ORM
+- **Data Strategy**: All data persisted in DB; background fetcher polls sources periodically; API serves from local DB for speed/resilience
 
 ## Key Features
 - Interactive world map focused on Middle East with event markers
@@ -19,6 +20,8 @@ A real-time intelligence dashboard ("War Panel") for monitoring security events 
 - Defense system statistics (Iron Dome, Arrow, David's Sling, THAAD)
 - **i18n**: Full internationalization with i18next (English, Hebrew, Arabic, Persian)
 - **RTL Support**: Automatic RTL layout for Hebrew, Arabic, and Persian
+- **Database-backed caching**: All data stored locally in PostgreSQL for high-traffic resilience
+- **Background data fetcher**: Pluggable source adapters with configurable intervals
 
 ## Project Structure
 ```
@@ -43,11 +46,29 @@ client/src/
   pages/
     dashboard.tsx      - Main dashboard layout
 server/
-  routes.ts           - API endpoints + WebSocket
-  storage.ts          - In-memory storage with seed data
+  db.ts              - Drizzle ORM database connection (Neon serverless)
+  routes.ts          - API endpoints + WebSocket broadcasting
+  storage.ts         - DatabaseStorage class (PostgreSQL-backed IStorage)
+  seed.ts            - Initial seed data for first run
+  data-fetcher.ts    - Background data fetcher with pluggable sources
 shared/
-  schema.ts           - TypeScript types for all data models
+  schema.ts          - Drizzle tables + Zod schemas for all data models
 ```
+
+## Database Tables
+- `war_events` - Security events (missile launches, interceptions, etc.)
+- `news_items` - News articles from various sources
+- `alerts` - Pikud HaOref security alerts
+- `ai_summaries` - AI situation analysis snapshots
+- `data_source_status` - Tracking for external data source health
+
+## Data Fetcher Architecture
+- `server/data-fetcher.ts` manages background polling of data sources
+- Each source has: name, interval, proxyRequired flag, fetchFn
+- `PROXY_BASE_URL` env var configures Israeli proxy for geo-restricted sources
+- `fetchViaProxy()` helper routes requests through proxy when configured
+- `setNewEventCallback()` hooks into WebSocket broadcasting
+- Currently active sources: simulated-events (15-30s), ai-summary-refresh (60s)
 
 ## Theme
 - Dark military command center aesthetic
@@ -58,9 +79,15 @@ shared/
 - Glow effects on key elements
 
 ## API Endpoints
-- GET /api/events - War events
-- GET /api/statistics - Combat statistics
-- GET /api/news - News items
-- GET /api/alerts - Oref alerts
-- GET /api/ai-summary - AI analysis
+- GET /api/events - War events (from DB)
+- GET /api/statistics - Combat statistics (computed from DB)
+- GET /api/news - News items (from DB)
+- GET /api/alerts - Oref alerts (from DB)
+- GET /api/ai-summary - AI analysis (from DB)
+- GET /api/health - Health check + DB status
 - WS /ws - Real-time event updates
+
+## Environment Variables
+- `DATABASE_URL` - PostgreSQL connection string (auto-provisioned)
+- `PROXY_BASE_URL` - (optional) Israeli proxy server URL for geo-restricted data sources
+- `SESSION_SECRET` - Session secret

@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { pgTable, varchar, text, real, boolean, timestamp, jsonb, serial } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
 
 export const eventTypes = [
   "missile_launch",
@@ -14,6 +16,66 @@ export const eventTypes = [
 ] as const;
 
 export const threatLevels = ["critical", "high", "medium", "low"] as const;
+
+export const warEvents = pgTable("war_events", {
+  id: varchar("id").primaryKey(),
+  type: varchar("type", { length: 50 }).notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  location: text("location").notNull(),
+  lat: real("lat").notNull(),
+  lng: real("lng").notNull(),
+  country: varchar("country", { length: 100 }).notNull(),
+  source: varchar("source", { length: 200 }).notNull(),
+  timestamp: text("timestamp").notNull(),
+  threatLevel: varchar("threat_level", { length: 20 }).notNull(),
+  verified: boolean("verified").notNull().default(false),
+});
+
+export const newsItems = pgTable("news_items", {
+  id: varchar("id").primaryKey(),
+  title: text("title").notNull(),
+  source: varchar("source", { length: 200 }).notNull(),
+  timestamp: text("timestamp").notNull(),
+  url: text("url"),
+  category: varchar("category", { length: 100 }).notNull(),
+  breaking: boolean("breaking").notNull().default(false),
+});
+
+export const alerts = pgTable("alerts", {
+  id: varchar("id").primaryKey(),
+  area: text("area").notNull(),
+  threat: text("threat").notNull(),
+  timestamp: text("timestamp").notNull(),
+  active: boolean("active").notNull().default(true),
+  lat: real("lat").notNull(),
+  lng: real("lng").notNull(),
+});
+
+export const aiSummaries = pgTable("ai_summaries", {
+  id: serial("id").primaryKey(),
+  summary: text("summary").notNull(),
+  threatAssessment: varchar("threat_assessment", { length: 20 }).notNull(),
+  keyPoints: jsonb("key_points").notNull().$type<string[]>(),
+  lastUpdated: text("last_updated").notNull(),
+  recommendation: text("recommendation").notNull(),
+});
+
+export const dataSourceStatus = pgTable("data_source_status", {
+  id: varchar("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  lastFetchedAt: text("last_fetched_at"),
+  lastSuccessAt: text("last_success_at"),
+  lastError: text("last_error"),
+  enabled: boolean("enabled").notNull().default(true),
+  fetchIntervalSeconds: serial("fetch_interval_seconds").notNull(),
+});
+
+export const insertWarEventSchema = createInsertSchema(warEvents);
+export const insertNewsItemSchema = createInsertSchema(newsItems).omit({ });
+export const insertAlertSchema = createInsertSchema(alerts);
+export const insertAiSummarySchema = createInsertSchema(aiSummaries).omit({ id: true });
+export const insertDataSourceStatusSchema = createInsertSchema(dataSourceStatus);
 
 export const eventSchema = z.object({
   id: z.string(),
@@ -85,10 +147,8 @@ export const aiSummarySchema = z.object({
 
 export type AISummary = z.infer<typeof aiSummarySchema>;
 
-export const insertUserSchema = z.object({
-  username: z.string(),
-  password: z.string(),
-});
-
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = { id: string; username: string; password: string };
+export type InsertWarEvent = typeof warEvents.$inferInsert;
+export type InsertNewsItem = typeof newsItems.$inferInsert;
+export type InsertAlert = typeof alerts.$inferInsert;
+export type InsertAiSummary = z.infer<typeof insertAiSummarySchema>;
+export type DataSourceStatus = typeof dataSourceStatus.$inferSelect;
