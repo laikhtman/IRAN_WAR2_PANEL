@@ -148,9 +148,37 @@ export async function registerRoutes(
   });
 
   // RSS.app webhook — receives instant push when new feed items arrive
+  // RSS.app may send various content types, so we handle them all gracefully
   app.post("/api/webhooks/rss", async (req, res) => {
     try {
-      const count = await processRSSWebhook(req.body);
+      let body = req.body;
+
+      // If body is empty/undefined (e.g. content-type not application/json),
+      // try to parse from rawBody or read as text
+      if (!body || (typeof body === "object" && Object.keys(body).length === 0)) {
+        const raw = (req as any).rawBody;
+        if (raw) {
+          try {
+            body = JSON.parse(raw.toString());
+          } catch {
+            console.warn("[webhook/rss] Could not parse rawBody as JSON, using as-is");
+            body = { raw: raw.toString() };
+          }
+        }
+      }
+
+      // If body is a string (e.g. text/plain), try to parse as JSON
+      if (typeof body === "string") {
+        try {
+          body = JSON.parse(body);
+        } catch {
+          console.warn("[webhook/rss] Body is string but not valid JSON");
+          body = { raw: body };
+        }
+      }
+
+      console.log("[webhook/rss] Received payload type:", typeof body, "keys:", body ? Object.keys(body) : "null");
+      const count = await processRSSWebhook(body);
       res.json({ ok: true, ingested: count });
     } catch (err: any) {
       console.error("[webhook/rss] Error:", err.message);
