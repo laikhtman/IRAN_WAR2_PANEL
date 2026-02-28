@@ -1,21 +1,11 @@
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { NewsItem } from "@shared/schema";
-import { Newspaper, ExternalLink, Zap } from "lucide-react";
+import { Newspaper, Zap } from "lucide-react";
 
 interface NewsFeedProps {
   news: NewsItem[];
-}
-
-function formatTimeAgo(timestamp: string): string {
-  const now = new Date();
-  const time = new Date(timestamp);
-  const diff = Math.floor((now.getTime() - time.getTime()) / 1000);
-
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
 }
 
 const sourceColors: Record<string, string> = {
@@ -31,18 +21,36 @@ const sourceColors: Record<string, string> = {
   "Haaretz": "text-teal-400",
 };
 
+function useFormatTimeAgo() {
+  const { t } = useTranslation();
+
+  return (timestamp: string): string => {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diff = Math.floor((now.getTime() - time.getTime()) / 1000);
+
+    if (diff < 60) return t("time.secondsAgo", { count: diff });
+    if (diff < 3600) return t("time.minutesAgo", { count: Math.floor(diff / 60) });
+    if (diff < 86400) return t("time.hoursAgo", { count: Math.floor(diff / 3600) });
+    return t("time.daysAgo", { count: Math.floor(diff / 86400) });
+  };
+}
+
 export function NewsFeed({ news }: NewsFeedProps) {
+  const { t } = useTranslation();
+  const formatTimeAgo = useFormatTimeAgo();
+
   return (
     <div className="flex flex-col h-full" data-testid="news-feed">
       <div className="flex items-center justify-between gap-1 mb-2">
         <div className="flex items-center gap-2">
           <Newspaper className="w-3.5 h-3.5 text-primary" />
           <h3 className="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">
-            News Feed
+            {t("news.title")}
           </h3>
         </div>
         <span className="text-[8px] text-muted-foreground tabular-nums">
-          {news.length} items
+          {t("news.items", { count: news.length })}
         </span>
       </div>
 
@@ -50,7 +58,7 @@ export function NewsFeed({ news }: NewsFeedProps) {
         <div className="space-y-1.5 pr-1">
           {news.length === 0 ? (
             <div className="flex items-center justify-center h-20">
-              <p className="text-[10px] text-muted-foreground">Loading news feed...</p>
+              <p className="text-[10px] text-muted-foreground">{t("news.loading")}</p>
             </div>
           ) : (
             news.map((item) => (

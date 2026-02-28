@@ -1,0 +1,92 @@
+{
+  "header": {
+    "title": "WAR PANEL",
+    "subtitle": "INTELLIGENCE DASHBOARD",
+    "connected": "Connected",
+    "liveFeed": "Live Feed",
+    "local": "Local",
+    "israelTime": "Israel (IDT)"
+  },
+  "stats": {
+    "title": "Combat Statistics",
+    "live": "LIVE",
+    "missilesLaunched": "Missiles Launched",
+    "intercepted": "Intercepted",
+    "impacts": "Impacts",
+    "dronesLaunched": "Drones Launched",
+    "interceptionRate": "Interception Rate",
+    "byCountry": "By Country",
+    "launched": "launched",
+    "int": "int.",
+    "defenseSystems": "Defense Systems",
+    "activeAlerts": "Active Alerts",
+    "events24h": "24h Events"
+  },
+  "events": {
+    "title": "Live Event Feed",
+    "live": "LIVE",
+    "noEvents": "No events reported",
+    "types": {
+      "missile_launch": "MISSILE LAUNCH",
+      "missile_intercept": "INTERCEPTED",
+      "missile_hit": "IMPACT",
+      "drone_launch": "DRONE LAUNCH",
+      "drone_intercept": "DRONE INTERCEPT",
+      "air_raid_alert": "AIR RAID ALERT",
+      "ceasefire": "CEASEFIRE",
+      "military_operation": "MIL. OPERATION",
+      "explosion": "EXPLOSION",
+      "sirens": "SIRENS"
+    },
+    "threat": {
+      "critical": "CRITICAL",
+      "high": "HIGH",
+      "medium": "MEDIUM",
+      "low": "LOW"
+    }
+  },
+  "time": {
+    "secondsAgo": "{{count}}s ago",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago"
+  },
+  "news": {
+    "title": "News Feed",
+    "items": "{{count}} items",
+    "loading": "Loading news feed...",
+    "breaking": "BREAKING"
+  },
+  "ai": {
+    "title": "AI Situation Analysis",
+    "loading": "AI Analysis",
+    "threat": "THREAT",
+    "keyPoints": "Key Points",
+    "recommendation": "Recommendation",
+    "updated": "Updated"
+  },
+  "alerts": {
+    "title": "Oref Alerts",
+    "active": "{{count}} ACTIVE",
+    "noAlerts": "NO ACTIVE ALERTS",
+    "allClear": "All clear",
+    "recentlyExpired": "Recently Expired"
+  },
+  "map": {
+    "legend": "LEGEND",
+    "eventsTracked": "{{count}} EVENTS TRACKED"
+  },
+  "countries": {
+    "Iran": "Iran",
+    "Lebanon": "Lebanon",
+    "Yemen": "Yemen",
+    "Iraq": "Iraq",
+    "Gaza": "Gaza",
+    "Israel": "Israel",
+    "Jordan": "Jordan",
+    "Syria": "Syria",
+    "Palestine": "Palestine",
+    "International Waters": "International Waters"
+  },
+  "language": "Language"
+}

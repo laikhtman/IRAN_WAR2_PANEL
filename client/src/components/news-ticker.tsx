@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { NewsItem } from "@shared/schema";
 import { AlertTriangle } from "lucide-react";
 
@@ -6,6 +7,7 @@ interface NewsTickerProps {
 }
 
 export function NewsTicker({ news }: NewsTickerProps) {
+  const { t } = useTranslation();
   const breakingNews = news.filter(n => n.breaking);
   const displayNews = breakingNews.length > 0 ? breakingNews : news.slice(0, 5);
 
@@ -21,7 +23,7 @@ export function NewsTicker({ news }: NewsTickerProps) {
         <div className="flex items-center gap-1.5 px-3 bg-red-600 h-full flex-shrink-0">
           <AlertTriangle className="w-3 h-3 text-white animate-blink-alert" />
           <span className="text-[9px] font-bold text-white uppercase tracking-[0.15em]">
-            BREAKING
+            {t("news.breaking")}
           </span>
         </div>
         <div className="flex-1 overflow-hidden">

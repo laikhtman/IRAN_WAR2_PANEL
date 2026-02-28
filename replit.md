@@ -17,6 +17,8 @@ A real-time intelligence dashboard ("War Panel") for monitoring security events 
 - Pikud HaOref (Israel Home Front Command) alert display
 - WebSocket-based live updates with simulated events
 - Defense system statistics (Iron Dome, Arrow, David's Sling, THAAD)
+- **i18n**: Full internationalization with i18next (English, Hebrew, Arabic, Persian)
+- **RTL Support**: Automatic RTL layout for Hebrew, Arabic, and Persian
 
 ## Project Structure
 ```
@@ -30,6 +32,14 @@ client/src/
     ai-summary.tsx     - AI situation analysis panel
     alerts-panel.tsx   - Active Pikud HaOref alerts
     header-bar.tsx     - Top bar with clocks and status
+    language-switcher.tsx - Language selector (EN/HE/AR/FA)
+  lib/
+    i18n.ts            - i18next config with RTL support
+  locales/
+    en.json            - English translations
+    he.json            - Hebrew translations
+    ar.json            - Arabic translations
+    fa.json            - Persian translations
   pages/
     dashboard.tsx      - Main dashboard layout
 server/

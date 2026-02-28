@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
 import type { WarEvent, Alert } from "@shared/schema";
 import "leaflet/dist/leaflet.css";
@@ -16,20 +17,7 @@ const eventColors: Record<string, string> = {
   sirens: "#ef4444",
 };
 
-const eventLabels: Record<string, string> = {
-  missile_launch: "MISSILE LAUNCH",
-  missile_intercept: "INTERCEPTED",
-  missile_hit: "IMPACT",
-  drone_launch: "DRONE LAUNCH",
-  drone_intercept: "DRONE INTERCEPT",
-  air_raid_alert: "AIR RAID ALERT",
-  ceasefire: "CEASEFIRE",
-  military_operation: "MIL. OPERATION",
-  explosion: "EXPLOSION",
-  sirens: "SIRENS",
-};
-
-function MapUpdater({ events }: { events: WarEvent[] }) {
+function MapUpdater() {
   const map = useMap();
   const hasSetView = useRef(false);
 
@@ -49,7 +37,16 @@ interface WarMapProps {
 }
 
 export function WarMap({ events, alerts }: WarMapProps) {
-  const [selectedEvent, setSelectedEvent] = useState<WarEvent | null>(null);
+  const { t } = useTranslation();
+
+  const eventLabelKeys: Record<string, string> = {
+    missile_launch: "events.types.missile_launch",
+    missile_intercept: "events.types.missile_intercept",
+    missile_hit: "events.types.missile_hit",
+    drone_launch: "events.types.drone_launch",
+    drone_intercept: "events.types.drone_intercept",
+    air_raid_alert: "events.types.air_raid_alert",
+  };
 
   return (
     <div className="relative w-full h-full" data-testid="war-map-container">
@@ -65,7 +62,7 @@ export function WarMap({ events, alerts }: WarMapProps) {
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <MapUpdater events={events} />
+        <MapUpdater />
 
         {events.map((event) => (
           <CircleMarker
@@ -79,9 +76,6 @@ export function WarMap({ events, alerts }: WarMapProps) {
               weight: 2,
               opacity: 0.8,
             }}
-            eventHandlers={{
-              click: () => setSelectedEvent(event),
-            }}
           >
             <Popup>
               <div className="bg-card text-card-foreground p-2 rounded-md min-w-[200px]" style={{ background: "hsl(220, 18%, 10%)", color: "hsl(200, 20%, 92%)" }}>
@@ -91,7 +85,7 @@ export function WarMap({ events, alerts }: WarMapProps) {
                     style={{ backgroundColor: eventColors[event.type] }}
                   />
                   <span className="text-[10px] font-bold tracking-wider uppercase" style={{ color: eventColors[event.type] }}>
-                    {eventLabels[event.type]}
+                    {t(`events.types.${event.type}`, event.type)}
                   </span>
                 </div>
                 <p className="text-xs font-semibold mb-1">{event.title}</p>
@@ -118,7 +112,7 @@ export function WarMap({ events, alerts }: WarMapProps) {
           >
             <Popup>
               <div style={{ background: "hsl(220, 18%, 10%)", color: "hsl(200, 20%, 92%)", padding: "8px", borderRadius: "4px" }}>
-                <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider">ACTIVE ALERT</p>
+                <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider">{t("alerts.active", { count: 1 })}</p>
                 <p className="text-xs font-semibold">{alert.area}</p>
                 <p className="text-[10px] opacity-70">{alert.threat}</p>
               </div>
@@ -129,12 +123,12 @@ export function WarMap({ events, alerts }: WarMapProps) {
 
       <div className="absolute top-3 left-3 z-[1000] pointer-events-none">
         <div className="bg-card/90 backdrop-blur-sm border border-border rounded-md p-2.5">
-          <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-2 font-semibold">LEGEND</p>
+          <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-2 font-semibold">{t("map.legend")}</p>
           <div className="space-y-1">
-            {Object.entries(eventLabels).slice(0, 6).map(([key, label]) => (
+            {Object.keys(eventLabelKeys).map((key) => (
               <div key={key} className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: eventColors[key] }} />
-                <span className="text-[9px] text-muted-foreground">{label}</span>
+                <span className="text-[9px] text-muted-foreground">{t(eventLabelKeys[key])}</span>
               </div>
             ))}
           </div>
@@ -144,7 +138,7 @@ export function WarMap({ events, alerts }: WarMapProps) {
       <div className="absolute bottom-3 left-3 z-[1000] pointer-events-none">
         <div className="bg-card/80 backdrop-blur-sm border border-border rounded-md px-3 py-1.5">
           <p className="text-[9px] uppercase tracking-[0.15em] text-primary font-semibold">
-            {events.length} EVENTS TRACKED
+            {t("map.eventsTracked", { count: events.length })}
           </p>
         </div>
       </div>

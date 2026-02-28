@@ -1,25 +1,35 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Radio, Wifi, Activity } from "lucide-react";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 export function HeaderBar() {
+  const { t, i18n } = useTranslation();
   const [time, setTime] = useState(new Date());
   const [israelTime, setIsraelTime] = useState("");
+  const [localTimeStr, setLocalTimeStr] = useState("");
+  const [dateStr, setDateStr] = useState("");
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const update = () => {
       const now = new Date();
+      const locale = i18n.language || "en";
       setTime(now);
-      setIsraelTime(now.toLocaleTimeString("en-US", {
+      setIsraelTime(now.toLocaleTimeString(locale, {
         timeZone: "Asia/Jerusalem",
         hour12: false,
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
       }));
-    }, 1000);
+      setLocalTimeStr(now.toLocaleTimeString(locale, { hour12: false }));
+      setDateStr(now.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" }));
+    };
+    update();
+    const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [i18n.language]);
 
   return (
     <header className="flex items-center justify-between gap-2 px-4 h-10 border-b border-border bg-card/50 flex-shrink-0" data-testid="header-bar">
@@ -30,10 +40,10 @@ export function HeaderBar() {
           </div>
           <div>
             <h1 className="text-[11px] font-bold text-foreground tracking-[0.1em] uppercase leading-none">
-              WAR PANEL
+              {t("header.title")}
             </h1>
             <p className="text-[7px] text-muted-foreground tracking-[0.2em] uppercase">
-              INTELLIGENCE DASHBOARD
+              {t("header.subtitle")}
             </p>
           </div>
         </div>
@@ -42,26 +52,30 @@ export function HeaderBar() {
 
         <div className="flex items-center gap-1.5">
           <Wifi className="w-3 h-3 text-emerald-400" />
-          <span className="text-[8px] text-emerald-400 uppercase tracking-wider font-semibold">Connected</span>
+          <span className="text-[8px] text-emerald-400 uppercase tracking-wider font-semibold">{t("header.connected")}</span>
         </div>
 
         <div className="flex items-center gap-1.5">
           <Activity className="w-3 h-3 text-primary" />
-          <span className="text-[8px] text-primary uppercase tracking-wider font-semibold">Live Feed</span>
+          <span className="text-[8px] text-primary uppercase tracking-wider font-semibold">{t("header.liveFeed")}</span>
         </div>
       </div>
 
       <div className="flex items-center gap-3">
+        <LanguageSwitcher />
+
+        <div className="h-4 w-px bg-border" />
+
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Local</p>
+            <p className="text-[8px] text-muted-foreground uppercase tracking-wider">{t("header.local")}</p>
             <p className="text-[11px] font-bold text-foreground tabular-nums leading-none">
-              {time.toLocaleTimeString("en-US", { hour12: false })}
+              {localTimeStr}
             </p>
           </div>
           <div className="h-4 w-px bg-border" />
           <div className="text-right">
-            <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Israel (IDT)</p>
+            <p className="text-[8px] text-muted-foreground uppercase tracking-wider">{t("header.israelTime")}</p>
             <p className="text-[11px] font-bold text-cyan-400 tabular-nums leading-none">
               {israelTime}
             </p>
@@ -71,8 +85,8 @@ export function HeaderBar() {
         <div className="h-4 w-px bg-border" />
 
         <Badge variant="outline" className="text-[8px] border-primary/30 text-primary no-default-hover-elevate no-default-active-elevate">
-          <Radio className="w-2.5 h-2.5 mr-1" />
-          {time.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          <Radio className="w-2.5 h-2.5 mr-1 rtl:ml-1 rtl:mr-0" />
+          {dateStr}
         </Badge>
       </div>
     </header>

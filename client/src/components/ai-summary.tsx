@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { AISummary } from "@shared/schema";
@@ -15,12 +16,14 @@ interface AISummaryPanelProps {
 }
 
 export function AISummaryPanel({ summary }: AISummaryPanelProps) {
+  const { t } = useTranslation();
+
   if (!summary) {
     return (
       <div className="border border-border rounded-md p-4 bg-card/30 animate-pulse" data-testid="ai-summary-loading">
         <div className="flex items-center gap-2 mb-3">
           <Brain className="w-4 h-4 text-primary" />
-          <span className="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">AI Analysis</span>
+          <span className="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">{t("ai.loading")}</span>
         </div>
         <div className="space-y-2">
           <div className="h-3 bg-muted rounded w-full" />
@@ -39,14 +42,14 @@ export function AISummaryPanel({ summary }: AISummaryPanelProps) {
             <Brain className="w-3.5 h-3.5 text-primary" />
           </div>
           <span className="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">
-            AI Situation Analysis
+            {t("ai.title")}
           </span>
         </div>
         <Badge
           variant="outline"
           className={`text-[7px] ${threatColors[summary.threatAssessment]} no-default-hover-elevate no-default-active-elevate`}
         >
-          THREAT: {summary.threatAssessment.toUpperCase()}
+          {t("ai.threat")}: {t(`events.threat.${summary.threatAssessment}`)}
         </Badge>
       </div>
 
@@ -58,7 +61,7 @@ export function AISummaryPanel({ summary }: AISummaryPanelProps) {
 
           <div>
             <p className="text-[9px] uppercase tracking-[0.15em] text-muted-foreground font-semibold mb-1.5">
-              Key Points
+              {t("ai.keyPoints")}
             </p>
             <ul className="space-y-1">
               {summary.keyPoints.map((point, i) => (
@@ -74,7 +77,7 @@ export function AISummaryPanel({ summary }: AISummaryPanelProps) {
             <div className="flex items-center gap-1.5 mb-1">
               <Shield className="w-3 h-3 text-primary" />
               <span className="text-[9px] uppercase tracking-[0.15em] text-primary font-semibold">
-                Recommendation
+                {t("ai.recommendation")}
               </span>
             </div>
             <p className="text-[10px] text-foreground leading-relaxed">
@@ -83,7 +86,7 @@ export function AISummaryPanel({ summary }: AISummaryPanelProps) {
           </div>
 
           <p className="text-[8px] text-muted-foreground text-right">
-            Updated: {new Date(summary.lastUpdated).toLocaleTimeString()}
+            {t("ai.updated")}: {new Date(summary.lastUpdated).toLocaleTimeString()}
           </p>
         </div>
       </ScrollArea>
