@@ -89,6 +89,9 @@ shared/
 - GET /api/health - Health check + DB status
 - WS /ws - Real-time event updates
 
+## Documentation
+Full developer documentation is in `/docs/` — see `docs/README.md` for the index.
+
 ## Environment Variables
 - `DATABASE_URL` - PostgreSQL connection string (auto-provisioned)
 - `PROXY_BASE_URL` - (optional) Israeli proxy server URL for geo-restricted data sources
