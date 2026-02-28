@@ -399,36 +399,57 @@ async function fetchRSSAppFeeds(): Promise<void> {
 
 // ─── RSS.app Webhook handler (instant push) ───────────────────────────────
 export async function processRSSWebhook(body: any): Promise<number> {
-  // RSS.app webhook payload may contain items directly or nested
-  const items: Array<any> = body?.items || body?.data || (Array.isArray(body) ? body : [body]);
-  const feedTitle = body?.feed?.title || body?.title || "RSS.app Webhook";
+  // RSS.app webhook payload format: { id, type, feed: { title, items: [...] }, ... }
+  // Extract items from all known locations
+  const items: Array<any> =
+    body?.feed?.items ||
+    body?.feed?.entries ||
+    body?.items ||
+    body?.entries ||
+    body?.articles ||
+    body?.data ||
+    body?.new_items ||
+    (Array.isArray(body) ? body : []);
+
+  const feedTitle = body?.feed?.title || body?.title || body?.feed?.name || "RSS.app Webhook";
+
+  console.log(`[webhook/rss] Feed: "${feedTitle}", items found: ${items.length}`);
+
+  if (items.length === 0) {
+    console.log("[webhook/rss] No items in payload, skipping");
+    return 0;
+  }
 
   const newItems: NewsItem[] = [];
 
   for (const item of items) {
-    const guid = item.id || item.guid || item.url || item.link || item.title || "";
-    if (!guid || seenGuids.has(guid)) continue;
+    try {
+      const guid = item.id || item.guid || item.url || item.link || item.title || "";
+      if (!guid || seenGuids.has(guid)) continue;
 
-    seenGuids.add(guid);
-    if (seenGuids.size > 1000) {
-      const first = seenGuids.values().next().value;
-      if (first) seenGuids.delete(first);
+      seenGuids.add(guid);
+      if (seenGuids.size > 1000) {
+        const first = seenGuids.values().next().value;
+        if (first) seenGuids.delete(first);
+      }
+
+      const title = item.title || item.content_text?.slice(0, 200) || item.description?.slice(0, 200) || "Untitled";
+      const isBreaking = BREAKING_KEYWORDS.some(kw =>
+        title.toLowerCase().includes(kw.toLowerCase())
+      );
+
+      newItems.push({
+        id: randomUUID(),
+        title,
+        source: feedTitle,
+        timestamp: item.date_published || item.pubDate || item.isoDate || item.created || new Date().toISOString(),
+        url: item.url || item.link,
+        category: "telegram",
+        breaking: isBreaking,
+      });
+    } catch (itemErr: any) {
+      console.error(`[webhook/rss] Error processing item:`, itemErr.message);
     }
-
-    const title = item.title || item.content_text?.slice(0, 200) || "Untitled";
-    const isBreaking = BREAKING_KEYWORDS.some(kw =>
-      title.toLowerCase().includes(kw.toLowerCase())
-    );
-
-    newItems.push({
-      id: randomUUID(),
-      title,
-      source: feedTitle,
-      timestamp: item.date_published || item.pubDate || item.isoDate || new Date().toISOString(),
-      url: item.url || item.link,
-      category: "telegram",
-      breaking: isBreaking,
-    });
   }
 
   if (newItems.length > 0) {
@@ -438,6 +459,7 @@ export async function processRSSWebhook(body: any): Promise<number> {
 
   return newItems.length;
 }
+
 
 // ─── 3. Real AI Summarization via GPT ──────────────────────────────────────
 const openai = new OpenAI(); // Reads OPENAI_API_KEY from env; throws if missing
