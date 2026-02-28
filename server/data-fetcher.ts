@@ -13,6 +13,12 @@ interface DataSourceConfig {
 
 const PROXY_BASE_URL = process.env.PROXY_BASE_URL || "";
 const PROXY_AUTH_TOKEN = process.env.PROXY_AUTH_TOKEN || "";
+const MARINETRAFFIC_API_KEY = process.env.MARINETRAFFIC_API_KEY || "";
+const ADSBX_API_KEY = process.env.ADSBX_API_KEY || "";
+const SENTINELHUB_CLIENT_ID = process.env.SENTINELHUB_CLIENT_ID || "";
+const SENTINELHUB_CLIENT_SECRET = process.env.SENTINELHUB_CLIENT_SECRET || "";
+let sentinelHubToken: string | null = null;
+let sentinelHubTokenExpiry = 0;
 
 export async function fetchViaProxy(url: string): Promise<Response> {
   if (PROXY_BASE_URL) {
@@ -485,6 +491,261 @@ async function analyzeNewsSentiment(): Promise<void> {
   }
 }
 
+// ─── 4. MarineTraffic Naval Movement Tracking ──────────────────────────────
+async function fetchMarineTraffic(): Promise<void> {
+  if (!MARINETRAFFIC_API_KEY) return;
+
+  try {
+    const url = `https://services.marinetraffic.com/api/exportvessel/v:8/${MARINETRAFFIC_API_KEY}/timespan:10/msgtype:simple/protocol:json`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`MarineTraffic API ${response.status}: ${await response.text()}`);
+    }
+
+    const vessels: Array<any> = await response.json();
+
+    // Filter for bounding box: lat 10-40, lng 25-55 (Red Sea + Eastern Med)
+    const filtered = vessels.filter((v: any) => {
+      const lat = parseFloat(v.LAT || v.lat || 0);
+      const lng = parseFloat(v.LON || v.lon || v.lng || 0);
+      return lat >= 10 && lat <= 40 && lng >= 25 && lng <= 55;
+    });
+
+    // Filter for military (type codes 35, 55) or tankers in conflict zones
+    const militaryTypes = ["35", "55"];
+    const relevantVessels = filtered.filter((v: any) => {
+      const shipType = String(v.SHIP_TYPE || v.ship_type || "");
+      return militaryTypes.includes(shipType) || shipType === "80" || shipType === "81";
+    });
+
+    const events: WarEvent[] = relevantVessels.slice(0, 20).map((v: any) => {
+      const lat = parseFloat(v.LAT || v.lat || 31.5);
+      const lng = parseFloat(v.LON || v.lon || v.lng || 34.75);
+      const shipName = v.SHIPNAME || v.shipname || "Unknown Vessel";
+      const flag = v.FLAG || v.flag || "Unknown";
+      const shipType = String(v.SHIP_TYPE || v.ship_type || "");
+      const isMilitary = militaryTypes.includes(shipType);
+
+      return {
+        id: `mt-${v.MMSI || v.mmsi || randomUUID()}`,
+        type: "naval_movement" as WarEvent["type"],
+        title: `Naval: ${shipName} (${flag})`,
+        description: `${isMilitary ? "Military" : "Strategic"} vessel ${shipName} flagged ${flag} detected in conflict zone`,
+        location: `${lat.toFixed(2)}°N, ${lng.toFixed(2)}°E`,
+        lat,
+        lng,
+        country: flag,
+        source: "MarineTraffic",
+        timestamp: new Date().toISOString(),
+        threatLevel: (isMilitary ? "medium" : "low") as WarEvent["threatLevel"],
+        verified: false,
+        aiClassified: false,
+      };
+    });
+
+    if (events.length > 0) {
+      // Delete old naval_movement events before inserting fresh batch
+      await storage.deleteEventsByType("naval_movement");
+      await storage.addEvents(events);
+      console.log(`[marine-traffic] Tracked ${events.length} vessels in conflict zone`);
+    }
+  } catch (err: any) {
+    console.error("[marine-traffic] Error:", err.message);
+  }
+}
+
+// ─── 5. ADS-B Exchange Aircraft Tracking ───────────────────────────────────
+async function fetchADSBExchange(): Promise<void> {
+  if (!ADSBX_API_KEY) return;
+
+  try {
+    const url = "https://adsbexchange.com/api/aircraft/json/lat/32/lon/35/dist/500/";
+    const response = await fetch(url, {
+      headers: { "api-auth": ADSBX_API_KEY },
+    });
+    if (!response.ok) {
+      throw new Error(`ADS-B Exchange API ${response.status}: ${await response.text()}`);
+    }
+
+    const data = await response.json();
+    const aircraft: Array<any> = data.ac || data.aircraft || [];
+
+    // Filter: military or high-altitude aircraft in conflict bounding box
+    const filtered = aircraft.filter((ac: any) => {
+      const lat = parseFloat(ac.lat || 0);
+      const lon = parseFloat(ac.lon || 0);
+      const alt = parseInt(ac.alt_baro || ac.alt || "0", 10);
+      const isMilitary = ac.mil === 1 || ac.mil === "1" || ac.type?.startsWith("F-") || ac.type?.startsWith("C-") || ac.type?.startsWith("KC-");
+      const inBBox = lat >= 25 && lat <= 40 && lon >= 25 && lon <= 55;
+      return inBBox && (isMilitary || alt >= 20000);
+    });
+
+    const events: WarEvent[] = filtered.slice(0, 50).map((ac: any) => {
+      const lat = parseFloat(ac.lat || 32);
+      const lon = parseFloat(ac.lon || 35);
+      const callsign = (ac.flight || ac.call || ac.hex || "UNKNOWN").trim();
+      const altFl = Math.round(parseInt(ac.alt_baro || ac.alt || "0", 10) / 100);
+      const acType = ac.t || ac.type || "Unknown";
+      const isMilitary = ac.mil === 1 || ac.mil === "1";
+
+      return {
+        id: `adsb-${ac.hex || randomUUID()}`,
+        type: "aircraft_tracking" as WarEvent["type"],
+        title: `Aircraft ${callsign} — ${acType} at FL${altFl}`,
+        description: `${isMilitary ? "Military" : "Surveillance"} aircraft ${callsign} (${acType}) at FL${altFl} over conflict zone`,
+        location: `${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`,
+        lat,
+        lng: lon,
+        country: ac.reg_country || "Unknown",
+        source: "ADS-B Exchange",
+        timestamp: new Date().toISOString(),
+        threatLevel: (isMilitary ? "medium" : "low") as WarEvent["threatLevel"],
+        verified: false,
+        aiClassified: false,
+      };
+    });
+
+    if (events.length > 0) {
+      // Delete old aircraft_tracking events before inserting fresh batch
+      await storage.deleteEventsByType("aircraft_tracking");
+      await storage.addEvents(events);
+      console.log(`[adsb] Tracked ${events.length} aircraft in conflict zone`);
+    }
+  } catch (err: any) {
+    console.error("[adsb] Error:", err.message);
+  }
+}
+
+// ─── 6. Sentinel Hub Satellite Imagery ─────────────────────────────────────
+async function getSentinelHubToken(): Promise<string | null> {
+  if (!SENTINELHUB_CLIENT_ID || !SENTINELHUB_CLIENT_SECRET) return null;
+
+  // Return cached token if still valid
+  if (sentinelHubToken && Date.now() < sentinelHubTokenExpiry) {
+    return sentinelHubToken;
+  }
+
+  try {
+    const response = await fetch("https://services.sentinel-hub.com/oauth/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: SENTINELHUB_CLIENT_ID,
+        client_secret: SENTINELHUB_CLIENT_SECRET,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Sentinel Hub auth ${response.status}`);
+    }
+
+    const data = await response.json();
+    sentinelHubToken = data.access_token;
+    sentinelHubTokenExpiry = Date.now() + (data.expires_in - 60) * 1000; // Refresh 60s early
+    return sentinelHubToken;
+  } catch (err: any) {
+    console.error("[sentinel-hub] Auth error:", err.message);
+    return null;
+  }
+}
+
+async function fetchSentinelImagery(): Promise<void> {
+  const token = await getSentinelHubToken();
+  if (!token) return;
+
+  try {
+    // Get recent missile_hit and explosion events (last 24h)
+    const allEvents = await storage.getEvents();
+    const now = Date.now();
+    const dayAgo = now - 24 * 3600000;
+
+    const strikeEvents = allEvents.filter(e =>
+      (e.type === "missile_hit" || e.type === "explosion") &&
+      new Date(e.timestamp).getTime() > dayAgo
+    ).slice(0, 10); // Max 10 per cycle
+
+    if (strikeEvents.length === 0) return;
+
+    const images: Array<{
+      id: string;
+      eventId: string;
+      imageUrl: string;
+      bboxWest: number;
+      bboxSouth: number;
+      bboxEast: number;
+      bboxNorth: number;
+      capturedAt: string;
+      createdAt: string;
+    }> = [];
+
+    for (const event of strikeEvents) {
+      try {
+        // 0.05° bounding box around event
+        const bbox = {
+          west: event.lng - 0.05,
+          south: event.lat - 0.05,
+          east: event.lng + 0.05,
+          north: event.lat + 0.05,
+        };
+
+        const toDate = new Date().toISOString().split("T")[0];
+        const fromDate = new Date(now - 5 * 24 * 3600000).toISOString().split("T")[0];
+
+        // Sentinel-2 L2A Catalog search for available imagery
+        const catalogUrl = "https://services.sentinel-hub.com/api/v1/catalog/1.0.0/search";
+        const catalogResponse = await fetch(catalogUrl, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            datetime: `${fromDate}T00:00:00Z/${toDate}T23:59:59Z`,
+            collections: ["sentinel-2-l2a"],
+            bbox: [bbox.west, bbox.south, bbox.east, bbox.north],
+            limit: 1,
+            filter: "eo:cloud_cover < 30",
+          }),
+        });
+
+        if (!catalogResponse.ok) continue;
+
+        const catalogData = await catalogResponse.json();
+        const features = catalogData.features || [];
+        if (features.length === 0) continue;
+
+        const feature = features[0];
+        const capturedAt = feature.properties?.datetime || new Date().toISOString();
+
+        // Build WMS URL for true-color image
+        const wmsUrl = `https://services.sentinel-hub.com/ogc/wms/${SENTINELHUB_CLIENT_ID}?SERVICE=WMS&REQUEST=GetMap&LAYERS=TRUE-COLOR-S2L2A&BBOX=${bbox.south},${bbox.west},${bbox.north},${bbox.east}&CRS=EPSG:4326&WIDTH=512&HEIGHT=512&FORMAT=image/png&TIME=${fromDate}/${toDate}`;
+
+        images.push({
+          id: `sat-${event.id}`,
+          eventId: event.id,
+          imageUrl: wmsUrl,
+          bboxWest: bbox.west,
+          bboxSouth: bbox.south,
+          bboxEast: bbox.east,
+          bboxNorth: bbox.north,
+          capturedAt,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (err: any) {
+        console.error(`[sentinel-hub] Error fetching imagery for event ${event.id}:`, err.message);
+      }
+    }
+
+    if (images.length > 0) {
+      await storage.addSatelliteImages(images);
+      console.log(`[sentinel-hub] Stored ${images.length} satellite images`);
+    }
+  } catch (err: any) {
+    console.error("[sentinel-hub] Error:", err.message);
+  }
+}
+
 let onNewEvent: ((event: WarEvent) => void) | null = null;
 
 export function setNewEventCallback(cb: (event: WarEvent) => void) {
@@ -519,6 +780,27 @@ const dataSources: DataSourceConfig[] = [
     fetchIntervalMs: 120000,
     proxyRequired: false,
     fetchFn: analyzeNewsSentiment,
+  },
+  {
+    name: "marine-traffic",
+    enabled: true,
+    fetchIntervalMs: 300000, // 5 minutes
+    proxyRequired: false,
+    fetchFn: fetchMarineTraffic,
+  },
+  {
+    name: "adsb-exchange",
+    enabled: true,
+    fetchIntervalMs: 60000, // 1 minute
+    proxyRequired: false,
+    fetchFn: fetchADSBExchange,
+  },
+  {
+    name: "sentinel-hub",
+    enabled: true,
+    fetchIntervalMs: 3600000, // 1 hour
+    proxyRequired: false,
+    fetchFn: fetchSentinelImagery,
   },
 ];
 

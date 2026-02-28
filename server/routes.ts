@@ -49,6 +49,40 @@ export async function registerRoutes(
     res.json(sentiment);
   });
 
+  app.get("/api/satellite-images", async (_req, res) => {
+    const images = await storage.getSatelliteImages();
+    res.json(images);
+  });
+
+  app.get("/api/satellite-images/:id/tile", async (req, res) => {
+    try {
+      const images = await storage.getSatelliteImages();
+      const image = images.find(img => img.id === req.params.id);
+      if (!image) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+
+      // Proxy the Sentinel Hub WMS tile to avoid exposing credentials
+      const response = await fetch(image.imageUrl, {
+        headers: {
+          "Authorization": `Bearer ${process.env.SENTINELHUB_CLIENT_ID || ""}`,
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(502).json({ error: "Failed to fetch satellite tile" });
+      }
+
+      const buffer = await response.arrayBuffer();
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.send(Buffer.from(buffer));
+    } catch (err: any) {
+      console.error("[satellite-tile] Error:", err.message);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // RSS.app webhook — receives instant push when new feed items arrive
   app.post("/api/webhooks/rss", async (req, res) => {
     try {

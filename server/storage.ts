@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
-import { warEvents, newsItems, alerts, aiSummaries } from "@shared/schema";
-import type { WarEvent, Statistics, NewsItem, Alert, AISummary } from "@shared/schema";
+import { warEvents, newsItems, alerts, aiSummaries, satelliteImages } from "@shared/schema";
+import type { WarEvent, Statistics, NewsItem, Alert, AISummary, SatelliteImage } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -19,6 +19,9 @@ export interface IStorage {
   isSeeded(): Promise<boolean>;
   updateNewsSentiment(newsId: string, score: number): Promise<void>;
   getNewsSentiment(): Promise<{ average: number; trend: string; sampleSize: number }>;
+  deleteEventsByType(type: string): Promise<void>;
+  addSatelliteImages(images: Array<{ id: string; eventId: string; imageUrl: string; bboxWest: number; bboxSouth: number; bboxEast: number; bboxNorth: number; capturedAt: string; createdAt: string }>): Promise<void>;
+  getSatelliteImages(): Promise<SatelliteImage[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -311,6 +314,37 @@ export class DatabaseStorage implements IStorage {
       trend,
       sampleSize: rows.length,
     };
+  }
+
+  async deleteEventsByType(type: string): Promise<void> {
+    await db.delete(warEvents).where(eq(warEvents.type, type));
+  }
+
+  async addSatelliteImages(images: Array<{ id: string; eventId: string; imageUrl: string; bboxWest: number; bboxSouth: number; bboxEast: number; bboxNorth: number; capturedAt: string; createdAt: string }>): Promise<void> {
+    if (images.length === 0) return;
+    await db.insert(satelliteImages).values(images).onConflictDoNothing();
+
+    // Prune to max 50 images
+    const imgCount = await db.select({ count: sql<number>`count(*)` }).from(satelliteImages);
+    if (imgCount[0].count > 50) {
+      const excess = Number(imgCount[0].count) - 50;
+      await db.execute(sql`DELETE FROM satellite_images WHERE id IN (SELECT id FROM satellite_images ORDER BY created_at ASC LIMIT ${excess})`);
+    }
+  }
+
+  async getSatelliteImages(): Promise<SatelliteImage[]> {
+    const rows = await db.select().from(satelliteImages).orderBy(desc(sql`created_at`)).limit(50);
+    return rows.map(r => ({
+      id: r.id,
+      eventId: r.eventId ?? undefined,
+      imageUrl: r.imageUrl,
+      bboxWest: r.bboxWest,
+      bboxSouth: r.bboxSouth,
+      bboxEast: r.bboxEast,
+      bboxNorth: r.bboxNorth,
+      capturedAt: r.capturedAt,
+      createdAt: r.createdAt,
+    }));
   }
 
   async isSeeded(): Promise<boolean> {

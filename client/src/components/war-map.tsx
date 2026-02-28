@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
-import type { WarEvent, Alert } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query";
+import { MapContainer, TileLayer, CircleMarker, Popup, ImageOverlay, useMap } from "react-leaflet";
+import type { WarEvent, Alert, SatelliteImage } from "@shared/schema";
 import "leaflet/dist/leaflet.css";
 
 const eventColors: Record<string, string> = {
@@ -15,6 +16,8 @@ const eventColors: Record<string, string> = {
   military_operation: "#a855f7",
   explosion: "#f97316",
   sirens: "#ef4444",
+  naval_movement: "#0ea5e9",
+  aircraft_tracking: "#a78bfa",
 };
 
 function MapUpdater() {
@@ -38,6 +41,11 @@ interface WarMapProps {
 
 export function WarMap({ events, alerts }: WarMapProps) {
   const { t } = useTranslation();
+  const [showSatellite, setShowSatellite] = useState(false);
+  const { data: satelliteImages } = useQuery<SatelliteImage[]>({
+    queryKey: ["/api/satellite-images"],
+    refetchInterval: 120000,
+  });
 
   const eventLabelKeys: Record<string, string> = {
     missile_launch: "events.types.missile_launch",
@@ -46,6 +54,8 @@ export function WarMap({ events, alerts }: WarMapProps) {
     drone_launch: "events.types.drone_launch",
     drone_intercept: "events.types.drone_intercept",
     air_raid_alert: "events.types.air_raid_alert",
+    naval_movement: "events.types.naval_movement",
+    aircraft_tracking: "events.types.aircraft_tracking",
   };
 
   return (
@@ -69,7 +79,12 @@ export function WarMap({ events, alerts }: WarMapProps) {
           <CircleMarker
             key={event.id}
             center={[event.lat, event.lng]}
-            radius={event.type === "missile_hit" || event.type === "explosion" ? 10 : 7}
+            radius={
+              event.type === "missile_hit" || event.type === "explosion" ? 10 :
+              event.type === "naval_movement" ? 5 :
+              event.type === "aircraft_tracking" ? 4 :
+              7
+            }
             pathOptions={{
               color: eventColors[event.type] || "#06b6d4",
               fillColor: eventColors[event.type] || "#06b6d4",
@@ -120,6 +135,18 @@ export function WarMap({ events, alerts }: WarMapProps) {
             </Popup>
           </CircleMarker>
         ))}
+
+        {showSatellite && satelliteImages?.map((img) => (
+          <ImageOverlay
+            key={img.id}
+            url={`/api/satellite-images/${img.id}/tile`}
+            bounds={[
+              [img.bboxSouth, img.bboxWest],
+              [img.bboxNorth, img.bboxEast],
+            ]}
+            opacity={0.7}
+          />
+        ))}
       </MapContainer>
 
       <div className="absolute top-3 left-3 z-[1000] pointer-events-none">
@@ -132,6 +159,17 @@ export function WarMap({ events, alerts }: WarMapProps) {
                 <span className="text-[9px] text-muted-foreground">{t(eventLabelKeys[key])}</span>
               </div>
             ))}
+          </div>
+          <div className="mt-2 pt-2 border-t border-border">
+            <button
+              onClick={() => setShowSatellite(prev => !prev)}
+              className="flex items-center gap-2 w-full text-left pointer-events-auto hover:bg-muted/50 rounded px-1 py-0.5 transition-colors"
+            >
+              <span className={`text-[9px] ${showSatellite ? "text-emerald-400" : "text-muted-foreground"}`}>
+                🛰 Satellite
+              </span>
+              <span className={`w-1.5 h-1.5 rounded-full ${showSatellite ? "bg-emerald-400" : "bg-muted-foreground/30"}`} />
+            </button>
           </div>
         </div>
       </div>
