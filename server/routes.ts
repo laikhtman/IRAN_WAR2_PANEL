@@ -44,6 +44,11 @@ export async function registerRoutes(
     });
   });
 
+  app.get("/api/news/sentiment", async (_req, res) => {
+    const sentiment = await storage.getNewsSentiment();
+    res.json(sentiment);
+  });
+
   // RSS.app webhook — receives instant push when new feed items arrive
   app.post("/api/webhooks/rss", async (req, res) => {
     try {

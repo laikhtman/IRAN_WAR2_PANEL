@@ -8,6 +8,15 @@ interface NewsFeedProps {
   news: NewsItem[];
 }
 
+function getSentimentColor(sentiment: number | undefined): string | null {
+  if (sentiment === undefined || sentiment === null) return null;
+  if (sentiment <= -0.5) return "bg-red-500";
+  if (sentiment <= -0.15) return "bg-orange-400";
+  if (sentiment <= 0.15) return "bg-yellow-400";
+  if (sentiment <= 0.5) return "bg-lime-400";
+  return "bg-emerald-400";
+}
+
 const sourceColors: Record<string, string> = {
   "Reuters": "text-orange-400",
   "Al Jazeera": "text-yellow-400",
@@ -97,6 +106,12 @@ export function NewsFeed({ news }: NewsFeedProps) {
                         <span className="text-[8px] text-muted-foreground tabular-nums">
                           {formatTimeAgo(item.timestamp)}
                         </span>
+                        {item.sentiment !== undefined && item.sentiment !== null && (
+                          <div
+                            className={`w-1.5 h-1.5 rounded-full ${getSentimentColor(item.sentiment)}`}
+                            title={`Sentiment: ${item.sentiment.toFixed(2)}`}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>

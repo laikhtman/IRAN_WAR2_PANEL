@@ -169,6 +169,52 @@ async function rssAppRequest(endpoint: string): Promise<any> {
   return res.json();
 }
 
+// ─── AI Event Classification (Task #22) ────────────────────────────────────
+async function classifyEvent(rawTitle: string, rawDescription: string): Promise<{ type: string; threatLevel: string } | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are a military intelligence classifier. Given a raw event report, return JSON with:
+- "type": one of: missile_launch, missile_intercept, missile_hit, drone_launch, drone_intercept, air_raid_alert, ceasefire, military_operation, explosion, sirens, naval_movement, aircraft_tracking
+- "threatLevel": one of: critical, high, medium, low
+Respond ONLY with valid JSON.`,
+        },
+        { role: "user", content: `Title: ${rawTitle}\nDescription: ${rawDescription}` },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.1,
+      max_tokens: 100,
+    }, { signal: controller.signal });
+
+    clearTimeout(timeout);
+    const content = response.choices[0]?.message?.content;
+    if (!content) return null;
+
+    const parsed = JSON.parse(content);
+    const validTypes = ["missile_launch", "missile_intercept", "missile_hit", "drone_launch", "drone_intercept", "air_raid_alert", "ceasefire", "military_operation", "explosion", "sirens", "naval_movement", "aircraft_tracking"];
+    const validThreats = ["critical", "high", "medium", "low"];
+
+    if (!validTypes.includes(parsed.type) || !validThreats.includes(parsed.threatLevel)) {
+      return null;
+    }
+
+    return { type: parsed.type, threatLevel: parsed.threatLevel };
+  } catch (err: any) {
+    if (err.name === "AbortError") {
+      console.warn("[ai-classify] Timeout — falling back to heuristic");
+    } else {
+      console.error("[ai-classify] Error:", err.message);
+    }
+    return null;
+  }
+}
+
 async function fetchRSSAppFeeds(): Promise<void> {
   if (!RSSAPP_API_KEY || !RSSAPP_API_SECRET) {
     return; // Feature disabled if no API credentials
@@ -228,6 +274,37 @@ async function fetchRSSAppFeeds(): Promise<void> {
             category: "telegram",
             breaking: isBreaking,
           });
+        }
+
+        // ─── AI Classification: try to extract war events from news items ───
+        if (newItems.length > 0 && newItems.length <= 5) {
+          try {
+            for (const item of newItems) {
+              const classification = await classifyEvent(item.title, item.title);
+              if (classification) {
+                const event: WarEvent = {
+                  id: randomUUID(),
+                  type: classification.type as WarEvent["type"],
+                  title: item.title,
+                  description: item.title,
+                  location: "Unknown",
+                  lat: 31.5 + (Math.random() - 0.5) * 2,
+                  lng: 34.75 + (Math.random() - 0.5) * 2,
+                  country: "Unknown",
+                  source: item.source,
+                  timestamp: item.timestamp,
+                  threatLevel: classification.threatLevel as WarEvent["threatLevel"],
+                  verified: false,
+                  aiClassified: true,
+                };
+                await storage.addEvent(event);
+                onNewEvent?.(event);
+                console.log(`[ai-classify] Classified "${item.title}" as ${classification.type}/${classification.threatLevel}`);
+              }
+            }
+          } catch (err: any) {
+            console.error("[ai-classify] Batch classification error:", err.message);
+          }
         }
 
         if (newItems.length > 0) {
@@ -356,6 +433,58 @@ ${JSON.stringify(recentNews.map(n => ({ title: n.title, source: n.source, time: 
   }
 }
 
+// ─── Sentiment Analysis (Task #24) ─────────────────────────────────────────
+async function analyzeNewsSentiment(): Promise<void> {
+  try {
+    const recentNews = (await storage.getNews()).slice(0, 20);
+    if (recentNews.length === 0) return;
+
+    // Only analyze items that don't have sentiment yet
+    const unscored = recentNews.filter(n => n.sentiment === undefined || n.sentiment === null);
+    if (unscored.length === 0) return;
+
+    const titles = unscored.map(n => n.title);
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "Rate each headline on a scale from -1.0 (extremely negative / alarming) to +1.0 (positive / peaceful). Return a JSON object with a single key \"scores\" containing an array of numbers in the same order as the input headlines. Respond ONLY with valid JSON.",
+        },
+        {
+          role: "user",
+          content: JSON.stringify(titles),
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.1,
+      max_tokens: 500,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) return;
+
+    const parsed = JSON.parse(content);
+    const scores: number[] = parsed.scores || parsed;
+
+    if (!Array.isArray(scores) || scores.length !== unscored.length) {
+      console.warn("[sentiment] Score count mismatch, skipping");
+      return;
+    }
+
+    // Update each news item with its sentiment score
+    for (let i = 0; i < unscored.length; i++) {
+      const score = Math.max(-1, Math.min(1, scores[i]));
+      await storage.updateNewsSentiment(unscored[i].id, score);
+    }
+
+    console.log(`[sentiment] Scored ${unscored.length} news items`);
+  } catch (err: any) {
+    console.error("[sentiment] Error analyzing sentiment:", err.message);
+  }
+}
+
 let onNewEvent: ((event: WarEvent) => void) | null = null;
 
 export function setNewEventCallback(cb: (event: WarEvent) => void) {
@@ -383,6 +512,13 @@ const dataSources: DataSourceConfig[] = [
     fetchIntervalMs: 120000,
     proxyRequired: false,
     fetchFn: refreshAISummary,
+  },
+  {
+    name: "sentiment-analysis",
+    enabled: true,
+    fetchIntervalMs: 120000,
+    proxyRequired: false,
+    fetchFn: analyzeNewsSentiment,
   },
 ];
 

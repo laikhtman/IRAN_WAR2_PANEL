@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PanelRight } from "lucide-react";
-import type { WarEvent, Statistics, NewsItem, Alert, AISummary } from "@shared/schema";
+import type { WarEvent, Statistics, NewsItem, Alert, AISummary, SentimentResponse } from "@shared/schema";
 
 const SIREN_URL = "https://www.oref.org.il/Shared/alarm/Impact.mp3";
 
@@ -94,6 +94,11 @@ export default function Dashboard() {
     refetchInterval: 30000,
   });
 
+  const { data: sentimentData } = useQuery<SentimentResponse>({
+    queryKey: ["/api/news/sentiment"],
+    refetchInterval: 30000,
+  });
+
   useEffect(() => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -156,7 +161,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col h-screen bg-background grid-overlay" data-testid="dashboard">
-      <HeaderBar isMuted={isMuted} onToggleMute={handleToggleMute} isPresentation={isPresentation} onTogglePresentation={handleTogglePresentation} />
+      <HeaderBar isMuted={isMuted} onToggleMute={handleToggleMute} isPresentation={isPresentation} onTogglePresentation={handleTogglePresentation} sentimentData={sentimentData || null} />
       <KeyboardShortcuts onToggleMute={handleToggleMute} onTogglePresentation={handleTogglePresentation} />
 
       <div className="flex-1 flex min-h-0">

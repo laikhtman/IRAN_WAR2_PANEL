@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Shield, Radio, Wifi, Activity, Volume2, VolumeX, Maximize2, Minimize2 } from "lucide-react";
+import { Shield, Radio, Wifi, Activity, Volume2, VolumeX, Maximize2, Minimize2, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 
 interface HeaderBarProps {
@@ -10,9 +10,10 @@ interface HeaderBarProps {
   onToggleMute?: () => void;
   isPresentation?: boolean;
   onTogglePresentation?: () => void;
+  sentimentData?: { average: number; trend: string; sampleSize: number } | null;
 }
 
-export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false, onTogglePresentation }: HeaderBarProps) {
+export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false, onTogglePresentation, sentimentData }: HeaderBarProps) {
   const { t, i18n } = useTranslation();
   const [time, setTime] = useState(new Date());
   const [israelTime, setIsraelTime] = useState("");
@@ -99,6 +100,28 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
               <Maximize2 className="w-3.5 h-3.5 text-muted-foreground" />
             )}
           </Button>
+        )}
+
+        {sentimentData && sentimentData.sampleSize > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="h-4 w-px bg-border" />
+            {sentimentData.trend === "escalating" ? (
+              <TrendingDown className="w-3 h-3 text-red-400" />
+            ) : sentimentData.trend === "de-escalating" ? (
+              <TrendingUp className="w-3 h-3 text-emerald-400" />
+            ) : (
+              <Minus className="w-3 h-3 text-yellow-400" />
+            )}
+            <span className={`text-[8px] uppercase tracking-wider font-semibold ${
+              sentimentData.trend === "escalating" ? "text-red-400" :
+              sentimentData.trend === "de-escalating" ? "text-emerald-400" : "text-yellow-400"
+            }`}>
+              {sentimentData.trend} ({sentimentData.average.toFixed(2)})
+            </span>
+            {sentimentData.trend === "escalating" && (
+              <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+            )}
+          </div>
         )}
 
         <LanguageSwitcher />

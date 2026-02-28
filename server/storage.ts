@@ -17,6 +17,8 @@ export interface IStorage {
   getAISummary(): Promise<AISummary>;
   setAISummary(summary: AISummary): Promise<void>;
   isSeeded(): Promise<boolean>;
+  updateNewsSentiment(newsId: string, score: number): Promise<void>;
+  getNewsSentiment(): Promise<{ average: number; trend: string; sampleSize: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -35,6 +37,7 @@ export class DatabaseStorage implements IStorage {
       timestamp: r.timestamp,
       threatLevel: r.threatLevel as WarEvent["threatLevel"],
       verified: r.verified,
+      aiClassified: r.aiClassified,
     }));
   }
 
@@ -52,6 +55,7 @@ export class DatabaseStorage implements IStorage {
       timestamp: event.timestamp,
       threatLevel: event.threatLevel,
       verified: event.verified,
+      aiClassified: event.aiClassified ?? false,
     }).onConflictDoNothing();
 
     const oldCount = await db.select({ count: sql<number>`count(*)` }).from(warEvents);
@@ -78,6 +82,7 @@ export class DatabaseStorage implements IStorage {
       timestamp: e.timestamp,
       threatLevel: e.threatLevel,
       verified: e.verified,
+      aiClassified: e.aiClassified ?? false,
     }));
     await db.insert(warEvents).values(values).onConflictDoNothing();
   }
@@ -150,6 +155,7 @@ export class DatabaseStorage implements IStorage {
       url: r.url ?? undefined,
       category: r.category,
       breaking: r.breaking,
+      sentiment: r.sentiment ?? undefined,
     }));
   }
 
@@ -163,6 +169,7 @@ export class DatabaseStorage implements IStorage {
       url: n.url ?? null,
       category: n.category,
       breaking: n.breaking,
+      sentiment: n.sentiment ?? null,
     }));
     await db.insert(newsItems).values(values).onConflictDoNothing();
 
@@ -267,6 +274,43 @@ export class DatabaseStorage implements IStorage {
 
     await this.setAISummary(summary);
     return summary;
+  }
+
+  async updateNewsSentiment(newsId: string, score: number): Promise<void> {
+    await db.update(newsItems).set({ sentiment: score }).where(eq(newsItems.id, newsId));
+  }
+
+  async getNewsSentiment(): Promise<{ average: number; trend: string; sampleSize: number }> {
+    const rows = await db.select({ sentiment: newsItems.sentiment, timestamp: newsItems.timestamp })
+      .from(newsItems)
+      .where(sql`sentiment IS NOT NULL`)
+      .orderBy(desc(newsItems.timestamp))
+      .limit(50);
+
+    if (rows.length === 0) {
+      return { average: 0, trend: "stable", sampleSize: 0 };
+    }
+
+    const scores = rows.map(r => r.sentiment!);
+    const average = scores.reduce((a, b) => a + b, 0) / scores.length;
+
+    // Trend: compare most recent 10 vs older items
+    const recent = scores.slice(0, Math.min(10, scores.length));
+    const older = scores.slice(10);
+    const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
+    const olderAvg = older.length > 0 ? older.reduce((a, b) => a + b, 0) / older.length : recentAvg;
+    const diff = recentAvg - olderAvg;
+
+    let trend: string;
+    if (diff < -0.15) trend = "escalating";
+    else if (diff > 0.15) trend = "de-escalating";
+    else trend = "stable";
+
+    return {
+      average: Math.round(average * 100) / 100,
+      trend,
+      sampleSize: rows.length,
+    };
   }
 
   async isSeeded(): Promise<boolean> {
