@@ -399,19 +399,17 @@ async function fetchRSSAppFeeds(): Promise<void> {
 
 // ─── RSS.app Webhook handler (instant push) ───────────────────────────────
 export async function processRSSWebhook(body: any): Promise<number> {
-  // RSS.app webhook payload format: { id, type: "feed_update", feed: { title, items_new: [...], items_changed: [...] } }
-  // Extract items from all known locations — RSS.app uses "items_new" + "items_changed"
-  const feedItemsNew: Array<any> = body?.feed?.items_new || [];
-  const feedItemsChanged: Array<any> = body?.feed?.items_changed || [];
-  const items: Array<any> =
-    feedItemsNew.length > 0 || feedItemsChanged.length > 0
-      ? [...feedItemsNew, ...feedItemsChanged]
-      : body?.feed?.items ||
-      body?.feed?.entries ||
-      body?.items ||
-      body?.entries ||
-      body?.data ||
-      (Array.isArray(body) ? body : []);
+  // RSS.app webhook puts items in body.data.items_new (+ items_changed), or sometimes body.feed.items_new
+  const dataObj = body?.data || body?.feed || {};
+  const itemsNew: Array<any> = Array.isArray(dataObj?.items_new) ? dataObj.items_new : [];
+  const itemsChanged: Array<any> = Array.isArray(dataObj?.items_changed) ? dataObj.items_changed : [];
+  let items: Array<any> = [...itemsNew, ...itemsChanged];
+
+  // Fallback: try other common locations if no items found above
+  if (items.length === 0) {
+    const fallback = body?.feed?.items || body?.items || body?.entries || (Array.isArray(body?.data) ? body.data : null) || (Array.isArray(body) ? body : null);
+    items = Array.isArray(fallback) ? fallback : [];
+  }
 
   const feedTitle = body?.feed?.title || body?.title || body?.feed?.name || "RSS.app Webhook";
 
