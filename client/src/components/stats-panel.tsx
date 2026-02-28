@@ -74,6 +74,19 @@ interface StatsPanelProps {
   stats: Statistics | null;
 }
 
+const countryFlags: Record<string, string> = {
+  Israel: "\uD83C\uDDEE\uD83C\uDDF1",
+  Iran: "\uD83C\uDDEE\uD83C\uDDF7",
+  Iraq: "\uD83C\uDDEE\uD83C\uDDF6",
+  Yemen: "\uD83C\uDDFE\uD83C\uDDEA",
+  Lebanon: "\uD83C\uDDF1\uD83C\uDDE7",
+  Syria: "\uD83C\uDDF8\uD83C\uDDFE",
+  Jordan: "\uD83C\uDDEF\uD83C\uDDF4",
+  Palestine: "\uD83C\uDDF5\uD83C\uDDF8",
+  "Saudi Arabia": "\uD83C\uDDF8\uD83C\uDDE6",
+  "International Waters": "\uD83C\uDF0A",
+};
+
 export function StatsPanel({ stats }: StatsPanelProps) {
   const { t } = useTranslation();
 
@@ -146,7 +159,10 @@ export function StatsPanel({ stats }: StatsPanelProps) {
         <div className="space-y-2">
           {Object.entries(stats.byCountry).map(([country, data]) => (
             <div key={country} className="flex items-center justify-between gap-2">
-              <span className="text-[10px] text-foreground font-medium">{t(`countries.${country}`, country)}</span>
+              <span className="text-[10px] text-foreground font-medium">
+                {countryFlags[country] && <span className="mr-1.5">{countryFlags[country]}</span>}
+                {t(`countries.${country}`, country)}
+              </span>
               <div className="flex items-center gap-3">
                 <span className="text-[9px] text-red-400 tabular-nums">{data.launched} {t("stats.launched")}</span>
                 <span className="text-[9px] text-emerald-400 tabular-nums">{data.intercepted} {t("stats.int")}</span>
