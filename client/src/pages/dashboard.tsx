@@ -8,6 +8,7 @@ import { AISummaryPanel } from "@/components/ai-summary";
 import { AlertsPanel } from "@/components/alerts-panel";
 import { NewsFeed } from "@/components/news-feed";
 import { HeaderBar } from "@/components/header-bar";
+import { LiveMediaPanel } from "@/components/live-media-panel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { WarEvent, Statistics, NewsItem, Alert, AISummary } from "@shared/schema";
 
@@ -103,6 +104,8 @@ export default function Dashboard() {
               </ScrollArea>
             </div>
           </div>
+
+          <LiveMediaPanel />
 
           <NewsTicker news={news || []} />
         </div>

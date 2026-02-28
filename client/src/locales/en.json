@@ -76,6 +76,31 @@
     "legend": "LEGEND",
     "eventsTracked": "{{count}} EVENTS TRACKED"
   },
+  "media": {
+    "title": "LIVE MEDIA",
+    "tvChannels": "TV CHANNELS",
+    "liveCameras": "CAMERAS",
+    "live": "LIVE",
+    "channels": {
+      "kan11": "Israeli Public Broadcasting",
+      "channel12": "Keshet 12 News",
+      "channel13": "Reshet 13 News",
+      "channel14": "Now 14",
+      "i24news": "International news from Israel",
+      "aljazeera": "Al Jazeera English Live",
+      "aljazeeraar": "Al Jazeera Arabic",
+      "alarabiya": "Al Arabiya News",
+      "skyarabia": "Sky News Arabia Live"
+    },
+    "cameras": {
+      "jerusalem": "Live view of the Western Wall",
+      "telaviv": "Tel Aviv beach & skyline",
+      "haifa": "Haifa port area",
+      "eilat": "Eilat underwater reef cam",
+      "mecca": "Live from Mecca",
+      "dubai": "Dubai live camera"
+    }
+  },
   "countries": {
     "Iran": "Iran",
     "Lebanon": "Lebanon",
@@ -86,7 +111,10 @@
     "Jordan": "Jordan",
     "Syria": "Syria",
     "Palestine": "Palestine",
-    "International Waters": "International Waters"
+    "International Waters": "International Waters",
+    "Qatar": "Qatar",
+    "UAE": "UAE",
+    "SaudiArabia": "Saudi Arabia"
   },
   "language": "Language"
 }

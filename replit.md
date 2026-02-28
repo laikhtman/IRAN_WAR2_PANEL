@@ -18,6 +18,7 @@ A real-time intelligence dashboard ("War Panel") for monitoring security events 
 - Pikud HaOref (Israel Home Front Command) alert display
 - WebSocket-based live updates with simulated events
 - Defense system statistics (Iron Dome, Arrow, David's Sling, THAAD)
+- **Live Media**: 9 TV channels + 6 live cameras with modal video player
 - **i18n**: Full internationalization with i18next (English, Hebrew, Arabic, Persian)
 - **RTL Support**: Automatic RTL layout for Hebrew, Arabic, and Persian
 - **Database-backed caching**: All data stored locally in PostgreSQL for high-traffic resilience
@@ -36,6 +37,7 @@ client/src/
     alerts-panel.tsx   - Active Pikud HaOref alerts
     header-bar.tsx     - Top bar with clocks and status
     language-switcher.tsx - Language selector (EN/HE/AR/FA)
+    live-media-panel.tsx - Live TV channels (9) and cameras (6) with modal player
   lib/
     i18n.ts            - i18next config with RTL support
   locales/
