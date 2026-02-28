@@ -148,7 +148,7 @@ const liveCameras: StreamSource[] = [
     category: "camera",
     country: "Israel",
     countryKey: "Israel",
-    embedUrl: "https://www.youtube.com/embed/qGzgzqD9Y5A?autoplay=1&mute=1",
+    embedUrl: "https://www.youtube.com/embed/7veP96YDAho?autoplay=1&mute=1",
     language: "none",
     description: "Haifa port area",
     descriptionKey: "media.cameras.haifa",

@@ -7,12 +7,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { isRTL } from "@/lib/i18n";
 import Dashboard from "@/pages/dashboard";
+import HealthPage from "@/pages/health";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/health" component={HealthPage} />
       <Route component={NotFound} />
     </Switch>
   );

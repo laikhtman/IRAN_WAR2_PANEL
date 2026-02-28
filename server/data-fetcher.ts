@@ -9,6 +9,71 @@ interface DataSourceConfig {
   fetchIntervalMs: number;
   proxyRequired: boolean;
   fetchFn: () => Promise<void>;
+  /** Required env vars for this source to function */
+  requiredEnvVars?: string[];
+}
+
+// ─── Runtime health tracking per data source ─────────────────────
+interface SourceHealth {
+  lastRunAt: string | null;
+  lastSuccessAt: string | null;
+  lastError: string | null;
+  runCount: number;
+  errorCount: number;
+}
+
+const sourceHealthMap = new Map<string, SourceHealth>();
+
+function recordSourceRun(name: string, error?: string) {
+  const existing = sourceHealthMap.get(name) || {
+    lastRunAt: null,
+    lastSuccessAt: null,
+    lastError: null,
+    runCount: 0,
+    errorCount: 0,
+  };
+  existing.lastRunAt = new Date().toISOString();
+  existing.runCount++;
+  if (error) {
+    existing.lastError = error;
+    existing.errorCount++;
+  } else {
+    existing.lastSuccessAt = new Date().toISOString();
+    existing.lastError = null;
+  }
+  sourceHealthMap.set(name, existing);
+}
+
+export function getDataSourceHealthStatus() {
+  return dataSources.map((src) => {
+    const health = sourceHealthMap.get(src.name);
+    // Check if required env vars are set
+    const missingEnvVars = (src.requiredEnvVars || []).filter(
+      (v) => !process.env[v]
+    );
+    const envConfigured = missingEnvVars.length === 0;
+    let status: "ok" | "error" | "not_configured" | "no_data";
+    if (!envConfigured) {
+      status = "not_configured";
+    } else if (!health || health.runCount === 0) {
+      status = "no_data";
+    } else if (health.lastError && !health.lastSuccessAt) {
+      status = "error";
+    } else if (health.lastError && health.lastSuccessAt) {
+      // Has succeeded before but last run errored
+      status = "error";
+    } else {
+      status = "ok";
+    }
+    return {
+      name: src.name,
+      enabled: src.enabled,
+      fetchIntervalMs: src.fetchIntervalMs,
+      status,
+      missingEnvVars,
+      health: health || null,
+    };
+  });
 }
 
 const PROXY_BASE_URL = process.env.PROXY_BASE_URL || "";
@@ -797,6 +862,7 @@ const dataSources: DataSourceConfig[] = [
     fetchIntervalMs: 5000,
     proxyRequired: true,
     fetchFn: fetchOrefAlerts,
+    requiredEnvVars: ["PROXY_BASE_URL"],
   },
   {
     name: "rss-app-feeds",
@@ -804,6 +870,7 @@ const dataSources: DataSourceConfig[] = [
     fetchIntervalMs: 60000,
     proxyRequired: false,
     fetchFn: fetchRSSAppFeeds,
+    requiredEnvVars: ["RSSAPP_API_KEY", "RSSAPP_API_SECRET"],
   },
   {
     name: "ai-summary-refresh",
@@ -811,6 +878,7 @@ const dataSources: DataSourceConfig[] = [
     fetchIntervalMs: 120000,
     proxyRequired: false,
     fetchFn: refreshAISummary,
+    requiredEnvVars: ["OPENAI_API_KEY"],
   },
   {
     name: "sentiment-analysis",
@@ -818,6 +886,7 @@ const dataSources: DataSourceConfig[] = [
     fetchIntervalMs: 120000,
     proxyRequired: false,
     fetchFn: analyzeNewsSentiment,
+    requiredEnvVars: ["OPENAI_API_KEY"],
   },
   {
     name: "marine-traffic",
@@ -825,6 +894,7 @@ const dataSources: DataSourceConfig[] = [
     fetchIntervalMs: 300000, // 5 minutes
     proxyRequired: false,
     fetchFn: fetchMarineTraffic,
+    requiredEnvVars: ["MARINETRAFFIC_API_KEY"],
   },
   {
     name: "adsb-exchange",
@@ -832,6 +902,7 @@ const dataSources: DataSourceConfig[] = [
     fetchIntervalMs: 60000, // 1 minute
     proxyRequired: false,
     fetchFn: fetchADSBExchange,
+    requiredEnvVars: ["ADSBX_API_KEY"],
   },
   {
     name: "sentinel-hub",
@@ -839,6 +910,7 @@ const dataSources: DataSourceConfig[] = [
     fetchIntervalMs: 3600000, // 1 hour
     proxyRequired: false,
     fetchFn: fetchSentinelImagery,
+    requiredEnvVars: ["SENTINELHUB_INSTANCE_ID"],
   },
 ];
 
@@ -858,7 +930,9 @@ export function startDataFetcher(): void {
     const run = async () => {
       try {
         await source.fetchFn();
+        recordSourceRun(source.name);
       } catch (err: any) {
+        recordSourceRun(source.name, err.message);
         console.error(`[data-fetcher] Error fetching "${source.name}":`, err.message);
       }
     };

@@ -2,8 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { WebSocketServer, WebSocket } from "ws";
-import { startDataFetcher, setNewEventCallback, processRSSWebhook } from "./data-fetcher";
+import { startDataFetcher, setNewEventCallback, processRSSWebhook, getDataSourceHealthStatus } from "./data-fetcher";
 import type { WarEvent } from "@shared/schema";
+import { db } from "./db";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -41,6 +42,63 @@ export async function registerRoutes(
       database: seeded ? "populated" : "empty",
       timestamp: new Date().toISOString(),
     });
+  });
+
+  // ─── Comprehensive system health endpoint ────────────────────────────────
+  app.get("/api/system-health", async (_req, res) => {
+    try {
+      // 1. Database connectivity
+      let dbStatus: "ok" | "error" = "ok";
+      let dbError = "";
+      let dbCounts = { events: 0, news: 0, alerts: 0, satellite: 0 };
+      try {
+        const events = await storage.getEvents();
+        const news = await storage.getNews();
+        const alerts = await storage.getAlerts();
+        const satellite = await storage.getSatelliteImages();
+        dbCounts = {
+          events: events.length,
+          news: news.length,
+          alerts: alerts.length,
+          satellite: satellite.length,
+        };
+      } catch (err: any) {
+        dbStatus = "error";
+        dbError = err.message;
+      }
+
+      // 2. Environment variables / API keys
+      const envVars: Record<string, "configured" | "missing"> = {
+        DATABASE_URL: process.env.DATABASE_URL ? "configured" : "missing",
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "configured" : "missing",
+        PROXY_BASE_URL: process.env.PROXY_BASE_URL ? "configured" : "missing",
+        PROXY_AUTH_TOKEN: process.env.PROXY_AUTH_TOKEN ? "configured" : "missing",
+        RSSAPP_API_KEY: process.env.RSSAPP_API_KEY ? "configured" : "missing",
+        RSSAPP_API_SECRET: process.env.RSSAPP_API_SECRET ? "configured" : "missing",
+        MARINETRAFFIC_API_KEY: process.env.MARINETRAFFIC_API_KEY ? "configured" : "missing",
+        ADSBX_API_KEY: process.env.ADSBX_API_KEY ? "configured" : "missing",
+        SENTINELHUB_CLIENT_ID: process.env.SENTINELHUB_CLIENT_ID ? "configured" : "missing",
+        SENTINELHUB_CLIENT_SECRET: process.env.SENTINELHUB_CLIENT_SECRET ? "configured" : "missing",
+        SENTINELHUB_INSTANCE_ID: process.env.SENTINELHUB_INSTANCE_ID ? "configured" : "missing",
+        SENTINELHUB_API_KEY: process.env.SENTINELHUB_API_KEY ? "configured" : "missing",
+      };
+
+      // 3. Data source fetcher status
+      const dataSources = getDataSourceHealthStatus();
+
+      // 4. WebSocket status
+      const wsClients = clients.size;
+
+      res.json({
+        timestamp: new Date().toISOString(),
+        database: { status: dbStatus, error: dbError, counts: dbCounts },
+        envVars,
+        dataSources,
+        webSocket: { connectedClients: wsClients },
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   app.get("/api/news/sentiment", async (_req, res) => {

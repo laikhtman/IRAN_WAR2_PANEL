@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Shield, Radio, Wifi, WifiOff, Activity, Volume2, VolumeX, Maximize2, Minimize2, TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { Shield, Radio, Wifi, WifiOff, Activity, Volume2, VolumeX, Maximize2, Minimize2, TrendingDown, TrendingUp, Minus, HeartPulse } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { Link } from "wouter";
 import type { WsStatus } from "@/hooks/use-connection-status";
 
 interface HeaderBarProps {
@@ -150,6 +151,17 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
         )}
 
         <LanguageSwitcher />
+
+        <Link href="/health">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            title="System Health"
+          >
+            <HeartPulse className="w-3.5 h-3.5 text-muted-foreground hover:text-cyan-400" />
+          </Button>
+        </Link>
 
         <div className="h-4 w-px bg-border" />
 
