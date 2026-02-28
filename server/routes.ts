@@ -5,11 +5,80 @@ import { WebSocketServer, WebSocket } from "ws";
 import { startDataFetcher, setNewEventCallback, processRSSWebhook, getDataSourceHealthStatus } from "./data-fetcher";
 import type { WarEvent } from "@shared/schema";
 import { db } from "./db";
+import { BASE_URL, ROBOTS_DISALLOW, SUPPORTED_LANGS, RSS } from "@shared/seo-config";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // ─── SEO routes ──────────────────────────────────────────────────────
+  app.get("/robots.txt", (_req, res) => {
+    const lines = [
+      "User-agent: *",
+      "Allow: /",
+      ...ROBOTS_DISALLOW.map(p => `Disallow: ${p}`),
+      "",
+      `Sitemap: ${BASE_URL}/sitemap.xml`,
+    ];
+    res.setHeader("Content-Type", "text/plain");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.send(lines.join("\n"));
+  });
+
+  app.get("/sitemap.xml", (_req, res) => {
+    const pages = ["/"];
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+    xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n`;
+    xml += `        xmlns:xhtml="http://www.w3.org/1999/xhtml">\n`;
+    for (const page of pages) {
+      xml += `  <url>\n`;
+      xml += `    <loc>${BASE_URL}${page}</loc>\n`;
+      for (const lang of SUPPORTED_LANGS) {
+        xml += `    <xhtml:link rel="alternate" hreflang="${lang}" href="${BASE_URL}${page}${page.includes("?") ? "&" : "?"}hl=${lang}" />\n`;
+      }
+      xml += `    <xhtml:link rel="alternate" hreflang="x-default" href="${BASE_URL}${page}" />\n`;
+      xml += `    <changefreq>always</changefreq>\n`;
+      xml += `    <priority>1.0</priority>\n`;
+      xml += `  </url>\n`;
+    }
+    xml += `</urlset>`;
+    res.setHeader("Content-Type", "application/xml");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.send(xml);
+  });
+
+  app.get("/feed.xml", async (_req, res) => {
+    try {
+      const events = await storage.getEvents();
+      const items = events.slice(0, RSS.maxItems);
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+      xml += `<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n`;
+      xml += `  <channel>\n`;
+      xml += `    <title>${escapeXml(RSS.title)}</title>\n`;
+      xml += `    <link>${BASE_URL}</link>\n`;
+      xml += `    <description>${escapeXml(RSS.description)}</description>\n`;
+      xml += `    <language>${RSS.language}</language>\n`;
+      xml += `    <atom:link href="${BASE_URL}${RSS.path}" rel="self" type="application/rss+xml" />\n`;
+      xml += `    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>\n`;
+      for (const event of items) {
+        xml += `    <item>\n`;
+        xml += `      <title>${escapeXml(event.type.toUpperCase().replace(/_/g, " "))} — ${escapeXml(event.location)}</title>\n`;
+        xml += `      <description>${escapeXml(event.description || "")}</description>\n`;
+        xml += `      <pubDate>${new Date(event.timestamp).toUTCString()}</pubDate>\n`;
+        xml += `      <guid isPermaLink="false">event-${event.id}</guid>\n`;
+        xml += `    </item>\n`;
+      }
+      xml += `  </channel>\n`;
+      xml += `</rss>`;
+      res.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=300");
+      res.send(xml);
+    } catch (err: any) {
+      res.status(500).send("<!-- RSS feed generation failed -->");
+    }
+  });
+
+  // ─── API routes ──────────────────────────────────────────────────────
   app.get("/api/events", async (_req, res) => {
     const events = await storage.getEvents();
     res.json(events);
@@ -215,4 +284,13 @@ export async function registerRoutes(
   startDataFetcher();
 
   return httpServer;
+}
+
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }

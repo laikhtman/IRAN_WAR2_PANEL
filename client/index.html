@@ -1,20 +1,46 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
-    <title>War Panel - Intelligence Dashboard</title>
-    <meta name="description" content="Real-time intelligence dashboard for monitoring security events in the Middle East" />
-    <meta property="og:title" content="War Panel - Intelligence Dashboard" />
-    <meta property="og:description" content="Centralized real-time monitoring of security events, missile tracking, and defense system statistics" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5, viewport-fit=cover" />
+    
+    <!-- SEO: Server injects localized meta tags here in production -->
+    <!--SEO_META-->
+    
+    <!-- Fallback meta (used in dev mode when server doesn't inject) -->
+    <title>War Panel — Real-Time Middle East Intelligence Dashboard</title>
+    <meta name="description" content="Live intelligence dashboard tracking missile launches, interceptions, drone activity, and defense systems across the Middle East. Real-time alerts and AI analysis." />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:title" content="War Panel — Real-Time Middle East Intelligence Dashboard" />
+    <meta property="og:description" content="Live intelligence dashboard tracking missile launches, interceptions, drone activity, and defense systems across the Middle East." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/og-image.png" />
+    
+    <!-- Favicons & PWA -->
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#0a0e14" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+    
+    <!-- DNS Prefetch for performance -->
+    <meta http-equiv="x-dns-prefetch-control" content="on" />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="dns-prefetch" href="https://unpkg.com" />
+    <link rel="dns-prefetch" href="https://tile.openstreetmap.org" />
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet" />
+    
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- JSON-LD: Server injects structured data here in production -->
+    <!--SEO_JSONLD-->
   </head>
   <body>
     <div id="root"></div>
