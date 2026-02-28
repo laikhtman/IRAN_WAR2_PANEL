@@ -17,6 +17,8 @@ const MARINETRAFFIC_API_KEY = process.env.MARINETRAFFIC_API_KEY || "";
 const ADSBX_API_KEY = process.env.ADSBX_API_KEY || "";
 const SENTINELHUB_CLIENT_ID = process.env.SENTINELHUB_CLIENT_ID || "";
 const SENTINELHUB_CLIENT_SECRET = process.env.SENTINELHUB_CLIENT_SECRET || "";
+const SENTINELHUB_INSTANCE_ID = process.env.SENTINELHUB_INSTANCE_ID || "";
+const SENTINELHUB_API_KEY = process.env.SENTINELHUB_API_KEY || "";
 let sentinelHubToken: string | null = null;
 let sentinelHubTokenExpiry = 0;
 
@@ -617,42 +619,71 @@ async function fetchADSBExchange(): Promise<void> {
 }
 
 // ─── 6. Sentinel Hub Satellite Imagery ─────────────────────────────────────
-async function getSentinelHubToken(): Promise<string | null> {
-  if (!SENTINELHUB_CLIENT_ID || !SENTINELHUB_CLIENT_SECRET) return null;
+// Auth: prefers OAuth2 (client_credentials) if configured, falls back to legacy API key (PLAK...)
+type SentinelAuth = { type: "oauth"; token: string } | { type: "apikey"; key: string };
 
-  // Return cached token if still valid
-  if (sentinelHubToken && Date.now() < sentinelHubTokenExpiry) {
-    return sentinelHubToken;
-  }
-
-  try {
-    const response = await fetch("https://services.sentinel-hub.com/oauth/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: SENTINELHUB_CLIENT_ID,
-        client_secret: SENTINELHUB_CLIENT_SECRET,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Sentinel Hub auth ${response.status}`);
+async function getSentinelHubAuth(): Promise<SentinelAuth | null> {
+  // 1. Try OAuth2 if both client ID + secret are set (not the API key)
+  if (SENTINELHUB_CLIENT_ID && SENTINELHUB_CLIENT_SECRET && !SENTINELHUB_CLIENT_SECRET.startsWith("PLAK")) {
+    if (sentinelHubToken && Date.now() < sentinelHubTokenExpiry) {
+      return { type: "oauth", token: sentinelHubToken };
     }
 
-    const data = await response.json();
-    sentinelHubToken = data.access_token;
-    sentinelHubTokenExpiry = Date.now() + (data.expires_in - 60) * 1000; // Refresh 60s early
-    return sentinelHubToken;
-  } catch (err: any) {
-    console.error("[sentinel-hub] Auth error:", err.message);
-    return null;
+    try {
+      const response = await fetch("https://services.sentinel-hub.com/oauth/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "client_credentials",
+          client_id: SENTINELHUB_CLIENT_ID,
+          client_secret: SENTINELHUB_CLIENT_SECRET,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Sentinel Hub OAuth ${response.status}`);
+      }
+
+      const data = await response.json();
+      sentinelHubToken = data.access_token;
+      sentinelHubTokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
+      return { type: "oauth", token: sentinelHubToken! };
+    } catch (err: any) {
+      console.error("[sentinel-hub] OAuth error:", err.message);
+      // Fall through to API key
+    }
   }
+
+  // 2. Fall back to legacy API key
+  if (SENTINELHUB_API_KEY) {
+    return { type: "apikey", key: SENTINELHUB_API_KEY };
+  }
+
+  // 3. Also accept PLAK key stored in CLIENT_SECRET as fallback
+  if (SENTINELHUB_CLIENT_SECRET && SENTINELHUB_CLIENT_SECRET.startsWith("PLAK")) {
+    return { type: "apikey", key: SENTINELHUB_CLIENT_SECRET };
+  }
+
+  return null;
+}
+
+/** Build auth headers for Sentinel Hub requests */
+function sentinelAuthHeaders(auth: SentinelAuth): Record<string, string> {
+  if (auth.type === "oauth") {
+    return { "Authorization": `Bearer ${auth.token}` };
+  }
+  // Legacy API key — no auth header needed for WMS (key goes in URL)
+  // For Catalog API, use the Bearer token style that some endpoints accept
+  return {};
 }
 
 async function fetchSentinelImagery(): Promise<void> {
-  const token = await getSentinelHubToken();
-  if (!token) return;
+  const auth = await getSentinelHubAuth();
+  if (!auth) return;
+  if (!SENTINELHUB_INSTANCE_ID) {
+    console.warn("[sentinel-hub] SENTINELHUB_INSTANCE_ID not set, skipping");
+    return;
+  }
 
   try {
     // Get recent missile_hit and explosion events (last 24h)
@@ -693,33 +724,40 @@ async function fetchSentinelImagery(): Promise<void> {
         const fromDate = new Date(now - 5 * 24 * 3600000).toISOString().split("T")[0];
 
         // Sentinel-2 L2A Catalog search for available imagery
-        const catalogUrl = "https://services.sentinel-hub.com/api/v1/catalog/1.0.0/search";
-        const catalogResponse = await fetch(catalogUrl, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            datetime: `${fromDate}T00:00:00Z/${toDate}T23:59:59Z`,
-            collections: ["sentinel-2-l2a"],
-            bbox: [bbox.west, bbox.south, bbox.east, bbox.north],
-            limit: 1,
-            filter: "eo:cloud_cover < 30",
-          }),
-        });
+        let capturedAt = new Date().toISOString();
 
-        if (!catalogResponse.ok) continue;
+        if (auth.type === "oauth") {
+          // OAuth path: use Catalog API for precise imagery search
+          const catalogUrl = "https://services.sentinel-hub.com/api/v1/catalog/1.0.0/search";
+          const catalogResponse = await fetch(catalogUrl, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${auth.token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              datetime: `${fromDate}T00:00:00Z/${toDate}T23:59:59Z`,
+              collections: ["sentinel-2-l2a"],
+              bbox: [bbox.west, bbox.south, bbox.east, bbox.north],
+              limit: 1,
+              filter: "eo:cloud_cover < 30",
+            }),
+          });
 
-        const catalogData = await catalogResponse.json();
-        const features = catalogData.features || [];
-        if (features.length === 0) continue;
+          if (!catalogResponse.ok) continue;
 
-        const feature = features[0];
-        const capturedAt = feature.properties?.datetime || new Date().toISOString();
+          const catalogData = await catalogResponse.json();
+          const features = catalogData.features || [];
+          if (features.length === 0) continue;
+
+          capturedAt = features[0].properties?.datetime || capturedAt;
+        }
+        // API key path: skip catalog (requires OAuth), go straight to WMS
 
         // Build WMS URL for true-color image
-        const wmsUrl = `https://services.sentinel-hub.com/ogc/wms/${SENTINELHUB_CLIENT_ID}?SERVICE=WMS&REQUEST=GetMap&LAYERS=TRUE-COLOR-S2L2A&BBOX=${bbox.south},${bbox.west},${bbox.north},${bbox.east}&CRS=EPSG:4326&WIDTH=512&HEIGHT=512&FORMAT=image/png&TIME=${fromDate}/${toDate}`;
+        // API key auth: append to URL; OAuth: tile proxy adds Bearer header
+        const apiKeyParam = auth.type === "apikey" ? `&AUTH_TOKEN=${auth.key}` : "";
+        const wmsUrl = `https://services.sentinel-hub.com/ogc/wms/${SENTINELHUB_INSTANCE_ID}?SERVICE=WMS&REQUEST=GetMap&LAYERS=TRUE-COLOR-S2L2A&BBOX=${bbox.south},${bbox.west},${bbox.north},${bbox.east}&CRS=EPSG:4326&WIDTH=512&HEIGHT=512&FORMAT=image/png&TIME=${fromDate}/${toDate}${apiKeyParam}`;
 
         images.push({
           id: `sat-${event.id}`,

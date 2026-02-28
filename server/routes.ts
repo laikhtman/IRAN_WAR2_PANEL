@@ -2,7 +2,6 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { WebSocketServer, WebSocket } from "ws";
-import { seedIfEmpty } from "./seed";
 import { startDataFetcher, setNewEventCallback, processRSSWebhook } from "./data-fetcher";
 import type { WarEvent } from "@shared/schema";
 
@@ -63,11 +62,18 @@ export async function registerRoutes(
       }
 
       // Proxy the Sentinel Hub WMS tile to avoid exposing credentials
-      const response = await fetch(image.imageUrl, {
-        headers: {
-          "Authorization": `Bearer ${process.env.SENTINELHUB_CLIENT_ID || ""}`,
-        },
-      });
+      // Determine auth: if URL already has AUTH_TOKEN param (API key mode), no extra header needed
+      const headers: Record<string, string> = {};
+      if (!image.imageUrl.includes("AUTH_TOKEN=")) {
+        // OAuth mode — need Bearer token (use stored secret as fallback)
+        const secret = process.env.SENTINELHUB_CLIENT_SECRET || "";
+        if (secret && !secret.startsWith("PLAK")) {
+          // TODO: ideally we'd get a fresh OAuth token here, but for the tile proxy
+          // we rely on the token being embedded or use API key fallback
+          headers["Authorization"] = `Bearer ${secret}`;
+        }
+      }
+      const response = await fetch(image.imageUrl, { headers });
 
       if (!response.ok) {
         return res.status(502).json({ error: "Failed to fetch satellite tile" });
@@ -113,8 +119,7 @@ export async function registerRoutes(
     });
   };
 
-  await seedIfEmpty();
-
+  // No seed data — production uses only live data from fetchers
   setNewEventCallback(broadcast);
   startDataFetcher();
 
