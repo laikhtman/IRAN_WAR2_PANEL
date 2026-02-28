@@ -56,10 +56,15 @@ npm run build
 # Push schema to the database
 npm run db:push
 
-echo "[6/6] Installing and starting systemd service..."
+echo "[6/6] Installing and starting systemd and nginx services..."
 cp deploy/staging/iran-panel-staging.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now iran-panel-staging.service
 
-echo "Deployment complete! App should be running on port 5000."
+# Link staging nginx config
+cp deploy/staging/staging.intelhq.io.conf /etc/nginx/sites-available/
+ln -sf /etc/nginx/sites-available/staging.intelhq.io.conf /etc/nginx/sites-enabled/
+systemctl reload nginx
+
+echo "Deployment complete! App should be running on port 5000 and accessible via staging.intelhq.io if DNS is configured."
 echo "You can view logs with: journalctl -u iran-panel-staging.service -f"
