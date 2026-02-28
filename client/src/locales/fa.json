@@ -3,9 +3,13 @@
     "title": "\u067E\u0646\u0644 \u062C\u0646\u06AF",
     "subtitle": "\u062F\u0627\u0634\u0628\u0648\u0631\u062F \u0627\u0637\u0644\u0627\u0639\u0627\u062A\u06CC",
     "connected": "\u0645\u062A\u0635\u0644",
+    "disconnected": "\u0642\u0637\u0639 \u0627\u062A\u0635\u0627\u0644",
+    "reconnecting": "\u062F\u0631 \u062D\u0627\u0644 \u0627\u062A\u0635\u0627\u0644 \u0645\u062C\u062F\u062F",
     "liveFeed": "\u067E\u062E\u0634 \u0632\u0646\u062F\u0647",
+    "noData": "\u0628\u062F\u0648\u0646 \u062F\u0627\u062F\u0647",
     "local": "\u0645\u062D\u0644\u06CC",
-    "israelTime": "\u0627\u0633\u0631\u0627\u0626\u06CC\u0644 (IDT)"
+    "israelTime": "\u0627\u0633\u0631\u0627\u0626\u06CC\u0644 (IDT)",
+    "tehranTime": "\u062A\u0647\u0631\u0627\u0646 (IRST)"
   },
   "stats": {
     "title": "\u0622\u0645\u0627\u0631 \u0646\u0628\u0631\u062F",
@@ -81,6 +85,8 @@
     "tvChannels": "کانال‌های تلویزیون",
     "liveCameras": "دوربین‌ها",
     "live": "زنده",
+    "selectChannels": "انتخاب کانال‌ها",
+    "selectUpTo3": "تا 3 کانال انتخاب کنید",
     "channels": {
       "kan11": "صدا و سیمای اسرائیل",
       "channel12": "اخبار کشت 12",

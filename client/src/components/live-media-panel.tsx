@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tv, Camera, X, Maximize2, ChevronDown, ChevronUp, Radio } from "lucide-react";
 
 interface StreamSource {
@@ -194,8 +193,31 @@ export function LiveMediaPanel() {
   const [activeTab, setActiveTab] = useState<"tv" | "camera">("tv");
   const [expandedStream, setExpandedStream] = useState<StreamSource | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>(["kan11"]);
+  const [selectorOpen, setSelectorOpen] = useState(false);
 
   const sources = activeTab === "tv" ? tvChannels : liveCameras;
+  const selectedStreams = sources.filter((s) => selectedIds.includes(s.id));
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      if (prev.includes(id)) {
+        // Don't allow removing last one
+        if (prev.length <= 1) return prev;
+        return prev.filter((x) => x !== id);
+      }
+      if (prev.length >= 3) return prev; // max 3
+      return [...prev, id];
+    });
+  };
+
+  // When switching tabs, reset selection to first source of that tab
+  const handleTabChange = (tab: "tv" | "camera") => {
+    setActiveTab(tab);
+    const firstSource = tab === "tv" ? tvChannels[0] : liveCameras[0];
+    setSelectedIds(firstSource ? [firstSource.id] : []);
+    setSelectorOpen(false);
+  };
 
   const closeModal = useCallback(() => setExpandedStream(null), []);
 
@@ -270,8 +292,58 @@ export function LiveMediaPanel() {
           <div className="flex-1" />
 
           <Badge variant="outline" className="text-[8px] border-red-500/30 text-red-400 no-default-hover-elevate no-default-active-elevate">
-            {sources.length} {t("media.live")}
+            {selectedStreams.length}/{sources.length} {t("media.live")}
           </Badge>
+
+          <div className="relative">
+            <button
+              onClick={() => setSelectorOpen((v) => !v)}
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 transition-colors"
+              data-testid="media-selector-btn"
+            >
+              {t("media.selectChannels")}
+              {selectorOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+
+            {selectorOpen && (
+              <div className="absolute end-0 top-full mt-1 z-50 w-[240px] max-h-[200px] overflow-y-auto bg-card border border-border rounded-md shadow-lg p-1.5" data-testid="media-selector-dropdown">
+                <p className="text-[8px] text-muted-foreground uppercase tracking-wider px-1.5 py-1">
+                  {t("media.selectUpTo3")}
+                </p>
+                {sources.map((source) => {
+                  const isSelected = selectedIds.includes(source.id);
+                  const isDisabled = !isSelected && selectedIds.length >= 3;
+                  return (
+                    <button
+                      key={source.id}
+                      onClick={() => toggleSelection(source.id)}
+                      disabled={isDisabled}
+                      className={`w-full flex items-center gap-2 px-2 py-1 rounded text-start transition-colors ${
+                        isSelected
+                          ? "bg-primary/15 text-primary"
+                          : isDisabled
+                          ? "text-muted-foreground/40 cursor-not-allowed"
+                          : "text-foreground hover:bg-muted"
+                      }`}
+                      data-testid={`media-select-${source.id}`}
+                    >
+                      <div className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${
+                        isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"
+                      }`}>
+                        {isSelected && <span className="text-[8px] text-primary-foreground font-bold">✓</span>}
+                      </div>
+                      <span className="text-[9px] font-medium truncate">{source.name}</span>
+                      {source.language !== "none" && (
+                        <Badge variant="outline" className="text-[6px] px-1 py-0 h-3 ms-auto flex-shrink-0 no-default-hover-elevate no-default-active-elevate">
+                          {source.language.toUpperCase()}
+                        </Badge>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           <button
             onClick={() => setCollapsed(true)}
@@ -282,49 +354,48 @@ export function LiveMediaPanel() {
           </button>
         </div>
 
-        <ScrollArea className="w-full">
-          <div className="flex gap-2 p-2">
-            {sources.map((source) => (
-              <div
-                key={source.id}
-                className="flex-shrink-0 w-[180px] border border-border rounded-md bg-card/50 overflow-hidden cursor-pointer hover-elevate group transition-all"
-                onClick={() => setExpandedStream(source)}
-                data-testid={`media-card-${source.id}`}
-              >
-                <div className="relative w-full h-[100px] bg-black/80 flex items-center justify-center">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    {activeTab === "tv" ? (
-                      <Tv className="w-8 h-8 text-muted-foreground/30" />
-                    ) : (
-                      <Camera className="w-8 h-8 text-muted-foreground/30" />
-                    )}
-                  </div>
-                  <div className="absolute top-1 start-1 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse-glow" />
-                    <span className="text-[7px] font-bold text-red-400 uppercase">{t("media.live")}</span>
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-                    <Maximize2 className="w-6 h-6 text-white" />
-                  </div>
+        {/* Selected channel previews — live iframes */}
+        <div className={`grid gap-2 p-2 ${
+          selectedStreams.length === 1 ? "grid-cols-1" :
+          selectedStreams.length === 2 ? "grid-cols-2" : "grid-cols-3"
+        }`}>
+          {selectedStreams.map((source) => (
+            <div
+              key={source.id}
+              className="relative border border-border rounded-md bg-black/80 overflow-hidden group"
+              data-testid={`media-preview-${source.id}`}
+            >
+              <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+                <iframe
+                  src={source.embedUrl}
+                  className="absolute inset-0 w-full h-full"
+                  allow="autoplay; encrypted-media"
+                  referrerPolicy="no-referrer"
+                  sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+                />
+              </div>
+              {/* Overlay with name + expand on hover */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                <div className="flex items-center gap-1 p-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse-glow" />
+                  <span className="text-[7px] font-bold text-red-400 uppercase drop-shadow-md">{t("media.live")}</span>
                 </div>
-                <div className="p-1.5">
-                  <p className="text-[9px] font-semibold text-foreground truncate">{source.name}</p>
-                  <div className="flex items-center justify-between gap-1 mt-0.5">
-                    <span className="text-[8px] text-muted-foreground truncate">
+                <div
+                  className="flex items-center justify-between p-1.5 bg-gradient-to-t from-black/70 to-transparent pointer-events-auto cursor-pointer opacity-70 hover:opacity-100 transition-opacity"
+                  onClick={() => setExpandedStream(source)}
+                >
+                  <div>
+                    <p className="text-[9px] font-semibold text-white truncate drop-shadow-md">{source.name}</p>
+                    <span className="text-[7px] text-white/60">
                       {t(`countries.${source.countryKey}`, source.country)}
                     </span>
-                    {source.language !== "none" && (
-                      <Badge variant="outline" className="text-[6px] px-1 py-0 h-3 no-default-hover-elevate no-default-active-elevate">
-                        {source.language.toUpperCase()}
-                      </Badge>
-                    )}
                   </div>
+                  <Maximize2 className="w-4 h-4 text-white/80" />
                 </div>
               </div>
-            ))}
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+            </div>
+          ))}
+        </div>
       </div>
 
       {expandedStream && (
@@ -377,7 +448,7 @@ export function LiveMediaPanel() {
             </div>
             <div className="px-4 py-2 border-t border-border bg-card/80">
               <p className="text-[9px] text-muted-foreground">
-                {t(`media.${expandedStream.category === "tv" ? "channels" : "cameras"}.${expandedStream.nameKey}`, expandedStream.description)}
+                {t(`media.${expandedStream.category === "tv" ? "channels" : "cameras"}.${expandedStream.nameKey}`, expandedStream.description ?? "")}
               </p>
             </div>
           </div>

@@ -37,7 +37,7 @@ export function LanguageSwitcher() {
               className="text-[10px]"
               data-testid={`language-option-${lang.code}`}
             >
-              {lang.nativeLabel}
+              <span className="mr-1.5">{lang.flag}</span>{lang.nativeLabel}
             </SelectItem>
           ))}
         </SelectContent>

@@ -34,10 +34,10 @@ export function isRTL(lang?: string): boolean {
 }
 
 export const LANGUAGE_OPTIONS = [
-  { code: "en", label: "English", nativeLabel: "English" },
-  { code: "he", label: "Hebrew", nativeLabel: "\u05E2\u05D1\u05E8\u05D9\u05EA" },
-  { code: "ar", label: "Arabic", nativeLabel: "\u0627\u0644\u0639\u0631\u0628\u064A\u0629" },
-  { code: "fa", label: "Persian", nativeLabel: "\u0641\u0627\u0631\u0633\u06CC" },
+  { code: "en", label: "English", nativeLabel: "English", flag: "\uD83C\uDDFA\uD83C\uDDF8" },
+  { code: "he", label: "Hebrew", nativeLabel: "\u05E2\u05D1\u05E8\u05D9\u05EA", flag: "\uD83C\uDDEE\uD83C\uDDF1" },
+  { code: "ar", label: "Arabic", nativeLabel: "\u0627\u0644\u0639\u0631\u0628\u064A\u0629", flag: "\uD83C\uDDF8\uD83C\uDDE6" },
+  { code: "fa", label: "Persian", nativeLabel: "\u0641\u0627\u0631\u0633\u06CC", flag: "\uD83C\uDDEE\uD83C\uDDF7" },
 ];
 
 export default i18n;

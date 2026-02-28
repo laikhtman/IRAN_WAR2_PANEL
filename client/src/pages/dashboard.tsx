@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useConnectionStatus } from "@/hooks/use-connection-status";
 import { PanelRight } from "lucide-react";
 import type { WarEvent, Statistics, NewsItem, Alert, AISummary, SentimentResponse } from "@shared/schema";
 
@@ -23,10 +24,24 @@ export default function Dashboard() {
   const [wsEvents, setWsEvents] = useState<WarEvent[]>([]);
   const [isMuted, setIsMuted] = useState(true);
   const [isPresentation, setIsPresentation] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isMutedRef = useRef(isMuted);
   const isMobile = useIsMobile();
+
+  // WebSocket with real connection status tracking
+  const { wsStatus, isDataFresh } = useConnectionStatus(
+    useCallback((data: any) => {
+      if (data.type === "new_event") {
+        setWsEvents(prev => [data.event, ...prev].slice(0, 5));
+
+        // Play siren for air_raid_alert events when not muted
+        if (data.event.type === "air_raid_alert" && !isMutedRef.current && audioRef.current) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.play().catch(() => {});
+        }
+      }
+    }, [])
+  );
 
   // Keep ref in sync with state so the WS handler always sees current value
   useEffect(() => {
@@ -99,47 +114,9 @@ export default function Dashboard() {
     refetchInterval: 30000,
   });
 
-  useEffect(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    let unmounted = false;
-
-    const connect = () => {
-      if (unmounted) return;
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === "new_event") {
-            setWsEvents(prev => [data.event, ...prev].slice(0, 5));
-
-            // Play siren for air_raid_alert events when not muted
-            if (data.event.type === "air_raid_alert" && !isMutedRef.current && audioRef.current) {
-              audioRef.current.currentTime = 0;
-              audioRef.current.play().catch(() => {});
-            }
-          }
-        } catch (e) {}
-      };
-
-      ws.onclose = () => {
-        if (!unmounted) {
-          setTimeout(connect, 3000);
-        }
-      };
-    };
-
-    connect();
-
-    return () => {
-      unmounted = true;
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
-  }, []);
+  // API fetch success also counts as "live feed" even if WS is quiet
+  const apiFresh = !!(events && events.length > 0);
+  const liveFeed = isDataFresh || apiFresh;
 
   const allEvents = [...wsEvents, ...(events || [])].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -161,7 +138,15 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col h-screen bg-background grid-overlay" data-testid="dashboard">
-      <HeaderBar isMuted={isMuted} onToggleMute={handleToggleMute} isPresentation={isPresentation} onTogglePresentation={handleTogglePresentation} sentimentData={sentimentData || null} />
+      <HeaderBar
+        isMuted={isMuted}
+        onToggleMute={handleToggleMute}
+        isPresentation={isPresentation}
+        onTogglePresentation={handleTogglePresentation}
+        sentimentData={sentimentData || null}
+        wsStatus={wsStatus}
+        isLiveFeed={liveFeed}
+      />
       <KeyboardShortcuts onToggleMute={handleToggleMute} onTogglePresentation={handleTogglePresentation} />
 
       <div className="flex-1 flex min-h-0">

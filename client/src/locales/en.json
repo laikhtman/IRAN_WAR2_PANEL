@@ -3,9 +3,13 @@
     "title": "WAR PANEL",
     "subtitle": "INTELLIGENCE DASHBOARD",
     "connected": "Connected",
+    "disconnected": "Disconnected",
+    "reconnecting": "Reconnecting",
     "liveFeed": "Live Feed",
+    "noData": "No Data",
     "local": "Local",
-    "israelTime": "Israel (IDT)"
+    "israelTime": "Israel (IDT)",
+    "tehranTime": "Tehran (IRST)"
   },
   "stats": {
     "title": "Combat Statistics",
@@ -81,6 +85,8 @@
     "tvChannels": "TV CHANNELS",
     "liveCameras": "CAMERAS",
     "live": "LIVE",
+    "selectChannels": "Select Channels",
+    "selectUpTo3": "Choose up to 3 channels",
     "channels": {
       "kan11": "Israeli Public Broadcasting",
       "channel12": "Keshet 12 News",

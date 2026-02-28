@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Shield, Radio, Wifi, Activity, Volume2, VolumeX, Maximize2, Minimize2, TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { Shield, Radio, Wifi, WifiOff, Activity, Volume2, VolumeX, Maximize2, Minimize2, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import type { WsStatus } from "@/hooks/use-connection-status";
 
 interface HeaderBarProps {
   isMuted?: boolean;
@@ -11,12 +12,15 @@ interface HeaderBarProps {
   isPresentation?: boolean;
   onTogglePresentation?: () => void;
   sentimentData?: { average: number; trend: string; sampleSize: number } | null;
+  wsStatus?: WsStatus;
+  isLiveFeed?: boolean;
 }
 
-export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false, onTogglePresentation, sentimentData }: HeaderBarProps) {
+export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false, onTogglePresentation, sentimentData, wsStatus = "disconnected", isLiveFeed = false }: HeaderBarProps) {
   const { t, i18n } = useTranslation();
   const [time, setTime] = useState(new Date());
   const [israelTime, setIsraelTime] = useState("");
+  const [tehranTime, setTehranTime] = useState("");
   const [localTimeStr, setLocalTimeStr] = useState("");
   const [dateStr, setDateStr] = useState("");
 
@@ -27,6 +31,13 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
       setTime(now);
       setIsraelTime(now.toLocaleTimeString(locale, {
         timeZone: "Asia/Jerusalem",
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }));
+      setTehranTime(now.toLocaleTimeString(locale, {
+        timeZone: "Asia/Tehran",
         hour12: false,
         hour: "2-digit",
         minute: "2-digit",
@@ -60,13 +71,27 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
         <div className="h-4 w-px bg-border" />
 
         <div className="flex items-center gap-1.5">
-          <Wifi className="w-3 h-3 text-emerald-400" />
-          <span className="text-[8px] text-emerald-400 uppercase tracking-wider font-semibold">{t("header.connected")}</span>
+          {wsStatus === "connected" ? (
+            <Wifi className="w-3 h-3 text-emerald-400" />
+          ) : (
+            <WifiOff className="w-3 h-3 text-red-400 animate-pulse" />
+          )}
+          <span className={`text-[8px] uppercase tracking-wider font-semibold ${
+            wsStatus === "connected" ? "text-emerald-400" :
+            wsStatus === "reconnecting" ? "text-yellow-400" : "text-red-400"
+          }`}>
+            {wsStatus === "connected" ? t("header.connected") :
+             wsStatus === "reconnecting" ? t("header.reconnecting") : t("header.disconnected")}
+          </span>
         </div>
 
         <div className="flex items-center gap-1.5">
-          <Activity className="w-3 h-3 text-primary" />
-          <span className="text-[8px] text-primary uppercase tracking-wider font-semibold">{t("header.liveFeed")}</span>
+          <Activity className={`w-3 h-3 ${isLiveFeed ? "text-primary" : "text-muted-foreground"}`} />
+          <span className={`text-[8px] uppercase tracking-wider font-semibold ${
+            isLiveFeed ? "text-primary" : "text-muted-foreground"
+          }`}>
+            {isLiveFeed ? t("header.liveFeed") : t("header.noData")}
+          </span>
         </div>
       </div>
 
@@ -140,6 +165,13 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
             <p className="text-[8px] text-muted-foreground uppercase tracking-wider">{t("header.israelTime")}</p>
             <p className="text-[11px] font-bold text-cyan-400 tabular-nums leading-none">
               {israelTime}
+            </p>
+          </div>
+          <div className="h-4 w-px bg-border" />
+          <div className="text-right">
+            <p className="text-[8px] text-muted-foreground uppercase tracking-wider">{t("header.tehranTime")}</p>
+            <p className="text-[11px] font-bold text-red-400 tabular-nums leading-none">
+              {tehranTime}
             </p>
           </div>
         </div>
