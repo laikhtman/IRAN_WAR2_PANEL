@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { MapContainer, TileLayer, CircleMarker, Popup, ImageOverlay, useMap } from "react-leaflet";
+import { Maximize2, Home } from "lucide-react";
 import type { WarEvent, Alert, SatelliteImage } from "@shared/schema";
 import "leaflet/dist/leaflet.css";
 
@@ -32,6 +33,39 @@ function MapUpdater() {
   }, [map]);
 
   return null;
+}
+
+const toolbarBtnClass = "w-8 h-8 rounded-md bg-card/90 backdrop-blur-sm border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors";
+
+function FitBoundsButton({ events }: { events: WarEvent[] }) {
+  const map = useMap();
+  const fitBounds = useCallback(() => {
+    if (events.length === 0) return;
+    const lats = events.map(e => e.lat);
+    const lngs = events.map(e => e.lng);
+    map.fitBounds(
+      [
+        [Math.min(...lats), Math.min(...lngs)],
+        [Math.max(...lats), Math.max(...lngs)],
+      ],
+      { padding: [40, 40] }
+    );
+  }, [events, map]);
+
+  return (
+    <button onClick={fitBounds} className={toolbarBtnClass} title="Fit all events">
+      <Maximize2 className="w-4 h-4" />
+    </button>
+  );
+}
+
+function ResetViewButton() {
+  const map = useMap();
+  return (
+    <button onClick={() => map.setView([31.5, 45], 5)} className={toolbarBtnClass} title="Reset view">
+      <Home className="w-4 h-4" />
+    </button>
+  );
 }
 
 interface WarMapProps {
@@ -75,24 +109,33 @@ export function WarMap({ events, alerts }: WarMapProps) {
         />
         <MapUpdater />
 
-        {events.map((event) => (
-          <CircleMarker
-            key={event.id}
-            center={[event.lat, event.lng]}
-            radius={
-              event.type === "missile_hit" || event.type === "explosion" ? 10 :
-              event.type === "naval_movement" ? 5 :
-              event.type === "aircraft_tracking" ? 4 :
-              7
-            }
-            pathOptions={{
-              color: eventColors[event.type] || "#06b6d4",
-              fillColor: eventColors[event.type] || "#06b6d4",
-              fillOpacity: 0.6,
-              weight: 2,
-              opacity: 0.8,
-            }}
-          >
+        {/* Map control toolbar */}
+        <div className="absolute top-3 ltr:right-3 rtl:left-3 z-[1000] flex flex-col gap-1.5">
+          <FitBoundsButton events={events} />
+          <ResetViewButton />
+        </div>
+
+        {events.map((event) => {
+          const isRecent = (Date.now() - new Date(event.timestamp).getTime()) < 300000;
+          return (
+            <CircleMarker
+              key={event.id}
+              center={[event.lat, event.lng]}
+              radius={
+                event.type === "missile_hit" || event.type === "explosion" ? 10 :
+                event.type === "naval_movement" ? 5 :
+                event.type === "aircraft_tracking" ? 4 :
+                7
+              }
+              pathOptions={{
+                color: eventColors[event.type] || "#06b6d4",
+                fillColor: eventColors[event.type] || "#06b6d4",
+                fillOpacity: 0.6,
+                weight: 2,
+                opacity: 0.8,
+                className: isRecent ? "animate-pulse-glow" : "",
+              }}
+            >
             <Popup>
               <div className="bg-card text-card-foreground p-2 rounded-md min-w-[200px]">
                 <div className="flex items-center gap-2 mb-1">
@@ -109,8 +152,9 @@ export function WarMap({ events, alerts }: WarMapProps) {
                 <p className="text-[11px] opacity-50 mt-1">{event.source} - {new Date(event.timestamp).toLocaleTimeString()}</p>
               </div>
             </Popup>
-          </CircleMarker>
-        ))}
+            </CircleMarker>
+          );
+        })}
 
         {alerts.filter(a => a.active).map((alert) => (
           <CircleMarker

@@ -14,13 +14,33 @@ import { OfflineBanner } from "@/components/offline-banner";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useConnectionStatus } from "@/hooks/use-connection-status";
-import { PanelRight } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Map,
+  Radio,
+  Brain,
+  Newspaper,
+  Tv,
+  AlertTriangle,
+  Target,
+  Shield,
+} from "lucide-react";
 import type { WarEvent, Statistics, NewsItem, Alert, AISummary, SentimentResponse } from "@shared/schema";
 
 const SIREN_URL = "https://www.oref.org.il/Shared/alarm/Impact.mp3";
+
+// ─── localStorage helpers ───
+function readBool(key: string, fallback: boolean): boolean {
+  try {
+    const v = localStorage.getItem(key);
+    if (v === "true") return true;
+    if (v === "false") return false;
+  } catch {}
+  return fallback;
+}
 
 export default function Dashboard() {
   const [wsEvents, setWsEvents] = useState<WarEvent[]>([]);
@@ -29,6 +49,38 @@ export default function Dashboard() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isMutedRef = useRef(isMuted);
   const isMobile = useIsMobile();
+
+  // ─── Viewport width for responsive sidebar merge ───
+  const [viewportWidth, setViewportWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1920);
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const isWide = viewportWidth >= 1440;
+
+  // ─── Sidebar collapse state (desktop) ───
+  const [statsCollapsed, setStatsCollapsed] = useState(() => readBool("war-panel-stats-collapsed", false));
+  const [rightCollapsed, setRightCollapsed] = useState(() => readBool("war-panel-right-collapsed", false));
+
+  const toggleStatsCollapsed = useCallback(() => {
+    setStatsCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem("war-panel-stats-collapsed", String(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const toggleRightCollapsed = useCallback(() => {
+    setRightCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem("war-panel-right-collapsed", String(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  // ─── Mobile tab state ───
+  const [mobileTab, setMobileTab] = useState<"map" | "events" | "intel" | "news" | "media">("map");
 
   // WebSocket with real connection status tracking
   const { wsStatus, isDataFresh } = useConnectionStatus(
@@ -128,22 +180,162 @@ export default function Dashboard() {
     (event, index, self) => index === self.findIndex(e => e.id === event.id)
   );
 
-  // ─── Sidebar panels (shared between desktop sidebar and mobile drawer) ───
-  const sidebarContent = (
-    <div className="flex flex-col gap-3 p-3">
-      <ErrorBoundary fallbackTitle="Events failed">
-        <EventFeed events={uniqueEvents.slice(0, 20)} />
-      </ErrorBoundary>
-      <ErrorBoundary fallbackTitle="AI Summary failed">
-        <AISummaryPanel summary={aiSummary || null} />
-      </ErrorBoundary>
-      <ErrorBoundary fallbackTitle="Alerts failed">
-        <AlertsPanel alerts={alerts || []} />
-      </ErrorBoundary>
-      <ErrorBoundary fallbackTitle="News failed">
-        <NewsFeed news={news || []} />
-      </ErrorBoundary>
-    </div>
+  const activeAlerts = (alerts || []).filter(a => a.active);
+
+  // ─── MOBILE LAYOUT ───
+  if (isMobile) {
+    const tabContent = () => {
+      switch (mobileTab) {
+        case "map":
+          return (
+            <div className="flex-1 relative min-h-0">
+              <WarMap events={uniqueEvents} alerts={alerts || []} />
+              <div className="absolute bottom-0 left-0 right-0 z-[400]">
+                <NewsTicker news={news || []} />
+              </div>
+            </div>
+          );
+        case "events":
+          return (
+            <ScrollArea className="flex-1">
+              <div className="p-3 pb-[env(safe-area-inset-bottom)]">
+                <ErrorBoundary fallbackTitle="Events failed">
+                  <EventFeed events={uniqueEvents.slice(0, 20)} />
+                </ErrorBoundary>
+              </div>
+            </ScrollArea>
+          );
+        case "intel":
+          return (
+            <ScrollArea className="flex-1">
+              <div className="p-3 space-y-3 pb-[env(safe-area-inset-bottom)]">
+                <ErrorBoundary fallbackTitle="Stats failed">
+                  <StatsPanel stats={stats || null} />
+                </ErrorBoundary>
+                <ErrorBoundary fallbackTitle="AI Summary failed">
+                  <AISummaryPanel summary={aiSummary || null} />
+                </ErrorBoundary>
+                <ErrorBoundary fallbackTitle="Alerts failed">
+                  <AlertsPanel alerts={alerts || []} />
+                </ErrorBoundary>
+              </div>
+            </ScrollArea>
+          );
+        case "news":
+          return (
+            <ScrollArea className="flex-1">
+              <div className="p-3 pb-[env(safe-area-inset-bottom)]">
+                <ErrorBoundary fallbackTitle="News failed">
+                  <NewsFeed news={news || []} />
+                </ErrorBoundary>
+              </div>
+            </ScrollArea>
+          );
+        case "media":
+          return (
+            <div className="flex-1 pb-[env(safe-area-inset-bottom)]">
+              <ErrorBoundary fallbackTitle="Media failed">
+                <LiveMediaPanel />
+              </ErrorBoundary>
+            </div>
+          );
+      }
+    };
+
+    const tabs: { key: typeof mobileTab; label: string; icon: React.ReactNode; badge?: React.ReactNode }[] = [
+      { key: "map", label: "Map", icon: <Map className="w-5 h-5" /> },
+      {
+        key: "events",
+        label: "Events",
+        icon: <Radio className="w-5 h-5" />,
+        badge:
+          wsEvents.length > 0 && mobileTab !== "events" ? (
+            <span className="absolute top-0 right-1 w-2.5 h-2.5 rounded-full bg-red-500" />
+          ) : null,
+      },
+      {
+        key: "intel",
+        label: "Intel",
+        icon: <Brain className="w-5 h-5" />,
+        badge:
+          activeAlerts.length > 0 ? (
+            <span className="absolute -top-0.5 right-0 min-w-[16px] h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center px-1 font-medium">
+              {activeAlerts.length}
+            </span>
+          ) : null,
+      },
+      { key: "news", label: "News", icon: <Newspaper className="w-5 h-5" /> },
+      { key: "media", label: "Media", icon: <Tv className="w-5 h-5" /> },
+    ];
+
+    return (
+      <div className="flex flex-col h-screen bg-background grid-overlay" data-testid="dashboard">
+        <OfflineBanner />
+        <HeaderBar
+          isMuted={isMuted}
+          onToggleMute={handleToggleMute}
+          isPresentation={isPresentation}
+          onTogglePresentation={handleTogglePresentation}
+          sentimentData={sentimentData || null}
+          wsStatus={wsStatus}
+          isLiveFeed={liveFeed}
+        />
+        <KeyboardShortcuts onToggleMute={handleToggleMute} onTogglePresentation={handleTogglePresentation} />
+
+        {/* Tab content area — fills between header and tab bar */}
+        <div className="flex-1 flex flex-col min-h-0 pb-14">{tabContent()}</div>
+
+        {/* Bottom Tab Bar */}
+        <nav className="fixed bottom-0 left-0 right-0 z-[1000] h-14 pb-[env(safe-area-inset-bottom)] bg-card/95 backdrop-blur-md border-t border-border flex items-center justify-around">
+          {tabs.map(tab => {
+            const active = mobileTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setMobileTab(tab.key)}
+                className={`relative flex flex-col items-center justify-center flex-1 h-full ${
+                  active ? "border-t-2 border-primary text-primary" : "text-muted-foreground"
+                }`}
+              >
+                <span className="relative">
+                  {tab.icon}
+                  {tab.badge}
+                </span>
+                <span className="text-[11px] mt-0.5">{tab.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+    );
+  }
+
+  // ─── DESKTOP LAYOUT ───
+
+  // Collapse‐toggle button shared component
+  const CollapseBtn = ({
+    collapsed,
+    onToggle,
+    side,
+  }: {
+    collapsed: boolean;
+    onToggle: () => void;
+    side: "left" | "right";
+  }) => (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={onToggle}
+      className={`absolute top-1/2 -translate-y-1/2 z-[600] h-6 w-6 rounded-full border border-border bg-card/90 shadow-md hover:bg-card ${
+        side === "left" ? "-left-3" : "-right-3"
+      }`}
+    >
+      {side === "left" ? (
+        collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />
+      ) : (
+        collapsed ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />
+      )}
+    </Button>
   );
 
   return (
@@ -161,86 +353,105 @@ export default function Dashboard() {
       <KeyboardShortcuts onToggleMute={handleToggleMute} onTogglePresentation={handleTogglePresentation} />
 
       <div className="flex-1 flex min-h-0">
+        {/* ─── Main center column (map + live media + ticker) ─── */}
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 flex min-h-0">
+            {/* Map area */}
             <div className="flex-1 min-w-0 relative">
               <WarMap events={uniqueEvents} alerts={alerts || []} />
 
-              {/* Mobile: floating button to open the drawer */}
-              {isMobile && (
-                <Drawer>
-                  <DrawerTrigger asChild>
-                    <Button
-                      size="icon"
-                      className="absolute bottom-4 right-4 z-[1000] h-12 w-12 rounded-full shadow-lg bg-primary text-primary-foreground"
-                    >
-                      <PanelRight className="w-5 h-5" />
-                    </Button>
-                  </DrawerTrigger>
-                  <DrawerContent className="max-h-[80vh]">
-                    <DrawerHeader>
-                      <DrawerTitle className="text-sm">Intel Panels</DrawerTitle>
-                    </DrawerHeader>
-                    <ScrollArea className="flex-1 max-h-[70vh]">
-                      {sidebarContent}
-                    </ScrollArea>
-                  </DrawerContent>
-                </Drawer>
+              {/* Presentation mode: floating stat badges */}
+              {isPresentation && stats && (
+                <div className="absolute top-4 right-4 z-[500] flex flex-col gap-2">
+                  <div className="flex items-center gap-2 rounded-lg bg-black/50 backdrop-blur-sm px-3 py-1.5 text-white text-sm">
+                    <Target className="w-4 h-4 text-red-400" />
+                    <span className="font-medium">{stats.totalMissilesLaunched}</span>
+                    <span className="text-white/70 text-xs">missiles</span>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg bg-black/50 backdrop-blur-sm px-3 py-1.5 text-white text-sm">
+                    <Shield className="w-4 h-4 text-green-400" />
+                    <span className="font-medium">{stats.totalIntercepted}</span>
+                    <span className="text-white/70 text-xs">intercepts</span>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg bg-black/50 backdrop-blur-sm px-3 py-1.5 text-white text-sm">
+                    <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                    <span className="font-medium">{stats.activeAlerts}</span>
+                    <span className="text-white/70 text-xs">alerts</span>
+                  </div>
+                </div>
               )}
             </div>
 
-            {/* Desktop: stats sidebar */}
-            {!isMobile && (
-              <div className="w-[320px] border-l border-border flex flex-col min-h-0 bg-card/20 contain-layout">
-                <ScrollArea className="flex-1">
-                  <div className="p-3">
-                    <ErrorBoundary fallbackTitle="Stats failed">
-                      <StatsPanel stats={stats || null} />
-                    </ErrorBoundary>
-                  </div>
-                </ScrollArea>
+            {/* Stats sidebar — only shown as separate column when viewport >= 1440 */}
+            {isWide && (
+              <div className="relative flex-shrink-0">
+                <CollapseBtn collapsed={statsCollapsed} onToggle={toggleStatsCollapsed} side="left" />
+                <div
+                  className="border-l border-border flex flex-col min-h-0 bg-card/20 contain-layout transition-all duration-300 overflow-hidden"
+                  style={{ width: statsCollapsed ? 0 : 320 }}
+                >
+                  <ScrollArea className="flex-1">
+                    <div className="p-3" style={{ width: 320 }}>
+                      <ErrorBoundary fallbackTitle="Stats failed">
+                        <StatsPanel stats={stats || null} />
+                      </ErrorBoundary>
+                    </div>
+                  </ScrollArea>
+                </div>
               </div>
             )}
           </div>
 
-          {!isPresentation && !isMobile && <LiveMediaPanel />}
+          {!isPresentation && <LiveMediaPanel />}
 
-          {!isPresentation && <NewsTicker news={news || []} />}
+          <NewsTicker news={news || []} />
         </div>
 
-        {/* Desktop: right sidebar with event feed, AI summary, alerts, news */}
-        {!isMobile && (
-          <div className="w-[340px] border-l border-border flex flex-col min-h-0 bg-card/10 contain-layout">
-            <div className="flex-1 flex flex-col min-h-0">
-              <div className="h-[45%] border-b border-border p-3">
-                <ErrorBoundary fallbackTitle="Events failed">
-                  <EventFeed events={uniqueEvents.slice(0, 20)} />
-                </ErrorBoundary>
-              </div>
+        {/* ─── Right sidebar ─── */}
+        <div className="relative flex-shrink-0">
+          <CollapseBtn collapsed={rightCollapsed} onToggle={toggleRightCollapsed} side="right" />
+          <div
+            className="border-l border-border flex flex-col min-h-0 bg-card/10 contain-layout transition-all duration-300 overflow-hidden"
+            style={{ width: rightCollapsed ? 0 : 340 }}
+          >
+            <ScrollArea className="flex-1">
+              <div className="flex flex-col min-h-0" style={{ width: 340 }}>
+                {/* When viewport < 1440, merge StatsPanel into right sidebar */}
+                {!isWide && (
+                  <div className="border-b border-border p-3">
+                    <ErrorBoundary fallbackTitle="Stats failed">
+                      <StatsPanel stats={stats || null} />
+                    </ErrorBoundary>
+                  </div>
+                )}
 
-              <div className="flex-1 flex flex-col min-h-0">
+                <div className="border-b border-border p-3" style={{ minHeight: "35%" }}>
+                  <ErrorBoundary fallbackTitle="Events failed">
+                    <EventFeed events={uniqueEvents.slice(0, 20)} />
+                  </ErrorBoundary>
+                </div>
+
                 <div className="border-b border-border p-3 flex-shrink-0">
                   <ErrorBoundary fallbackTitle="AI Summary failed">
                     <AISummaryPanel summary={aiSummary || null} />
                   </ErrorBoundary>
                 </div>
 
-                <div className="flex-1 flex flex-col min-h-0">
-                  <div className="h-1/2 border-b border-border p-3">
-                    <ErrorBoundary fallbackTitle="Alerts failed">
-                      <AlertsPanel alerts={alerts || []} />
-                    </ErrorBoundary>
-                  </div>
-                  <div className="h-1/2 p-3">
-                    <ErrorBoundary fallbackTitle="News failed">
-                      <NewsFeed news={news || []} />
-                    </ErrorBoundary>
-                  </div>
+                <div className="border-b border-border p-3">
+                  <ErrorBoundary fallbackTitle="Alerts failed">
+                    <AlertsPanel alerts={alerts || []} />
+                  </ErrorBoundary>
+                </div>
+
+                <div className="p-3">
+                  <ErrorBoundary fallbackTitle="News failed">
+                    <NewsFeed news={news || []} />
+                  </ErrorBoundary>
                 </div>
               </div>
-            </div>
+            </ScrollArea>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

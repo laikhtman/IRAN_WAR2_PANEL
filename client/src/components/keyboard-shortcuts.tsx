@@ -4,16 +4,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 interface KeyboardShortcutsProps {
   onToggleMute: () => void;
   onTogglePresentation: () => void;
+  onToggleStats?: () => void;
+  onToggleRight?: () => void;
+  onMobileTab?: (tab: number) => void;
 }
 
 const shortcuts = [
   { key: "F", description: "Toggle fullscreen / presentation mode" },
   { key: "M", description: "Toggle mute / unmute alerts" },
+  { key: "S", description: "Toggle stats sidebar" },
+  { key: "R", description: "Toggle right sidebar" },
+  { key: "1-5", description: "Switch mobile tab (Map/Events/Intel/News/Media)" },
   { key: "?", description: "Show / hide this help overlay" },
   { key: "Esc", description: "Close overlay / exit fullscreen" },
 ];
 
-export function KeyboardShortcuts({ onToggleMute, onTogglePresentation }: KeyboardShortcutsProps) {
+export function KeyboardShortcuts({ onToggleMute, onTogglePresentation, onToggleStats, onToggleRight, onMobileTab }: KeyboardShortcutsProps) {
   const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
@@ -31,6 +37,24 @@ export function KeyboardShortcuts({ onToggleMute, onTogglePresentation }: Keyboa
           e.preventDefault();
           onToggleMute();
           break;
+        case "s":
+          if (onToggleStats) {
+            e.preventDefault();
+            onToggleStats();
+          }
+          break;
+        case "r":
+          if (onToggleRight) {
+            e.preventDefault();
+            onToggleRight();
+          }
+          break;
+        case "1": case "2": case "3": case "4": case "5":
+          if (onMobileTab) {
+            e.preventDefault();
+            onMobileTab(parseInt(e.key));
+          }
+          break;
         case "?":
           e.preventDefault();
           setShowHelp(prev => !prev);
@@ -46,7 +70,7 @@ export function KeyboardShortcuts({ onToggleMute, onTogglePresentation }: Keyboa
 
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [onToggleMute, onTogglePresentation, showHelp]);
+  }, [onToggleMute, onTogglePresentation, onToggleStats, onToggleRight, onMobileTab, showHelp]);
 
   return (
     <Dialog open={showHelp} onOpenChange={setShowHelp}>

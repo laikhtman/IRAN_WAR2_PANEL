@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -10,11 +10,18 @@ import Dashboard from "@/pages/dashboard";
 import HealthPage from "@/pages/health";
 import NotFound from "@/pages/not-found";
 
+const TvDashboard = lazy(() => import("@/pages/tv-dashboard"));
+
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/health" component={HealthPage} />
+      <Route path="/tv">
+        <Suspense fallback={<div className="flex h-screen items-center justify-center bg-background text-foreground">Loading TV Mode...</div>}>
+          <TvDashboard />
+        </Suspense>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
