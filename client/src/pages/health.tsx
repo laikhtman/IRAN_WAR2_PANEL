@@ -68,11 +68,11 @@ const tvChannels = [
 ];
 
 const liveCameras = [
-  { id: "cam-jerusalem", name: "Jerusalem - Western Wall", embedUrl: "https://www.youtube.com/embed/MV2wIFYkmYA?autoplay=1&mute=1", country: "Israel" },
-  { id: "cam-telaviv", name: "Tel Aviv Skyline", embedUrl: "https://www.youtube.com/embed/JvTMNbk20os?autoplay=1&mute=1", country: "Israel" },
-  { id: "cam-haifa", name: "Haifa Port", embedUrl: "https://www.youtube.com/embed/7veP96YDAho?autoplay=1&mute=1", country: "Israel" },
-  { id: "cam-mecca", name: "Mecca - Masjid al-Haram", embedUrl: "https://www.youtube.com/embed/PYMipRRmq5Q?autoplay=1&mute=1", country: "Saudi Arabia" },
-  { id: "cam-dubai", name: "Dubai Skyline", embedUrl: "https://www.youtube.com/embed/7Kzc7gIj9Os?autoplay=1&mute=1", country: "UAE" },
+  { id: "cam-jerusalem", name: "Jerusalem Skyline", embedUrl: "https://www.youtube.com/embed/ITAlerjV8Ro?autoplay=1&mute=1&controls=0", country: "Israel" },
+  { id: "cam-telaviv", name: "Tel Aviv Skyline", embedUrl: "https://www.youtube.com/embed/CXP_uPkf_sY?autoplay=1&mute=1&controls=0", country: "Israel" },
+  { id: "cam-haifa", name: "Haifa Port", embedUrl: "https://www.youtube.com/embed/nNegFX3ys5Q?autoplay=1&mute=1&controls=0", country: "Israel" },
+  { id: "cam-mecca", name: "Mecca - Masjid al-Haram", embedUrl: "https://www.youtube.com/embed/-t-yKcXSrhM?autoplay=1&mute=1&controls=0", country: "Saudi Arabia" },
+  { id: "cam-dubai", name: "Dubai Marina", embedUrl: "https://www.youtube.com/embed/MfIpyflPbHQ?autoplay=1&mute=1&controls=0", country: "UAE" },
 ];
 
 // ─── Status helpers ────────────────────────────────────────────────────────

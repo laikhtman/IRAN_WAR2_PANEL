@@ -122,11 +122,11 @@ const tvChannels: StreamSource[] = [
 const liveCameras: StreamSource[] = [
   {
     id: "cam-jerusalem",
-    name: "Jerusalem - Western Wall",
+    name: "Jerusalem Skyline",
     category: "camera",
     country: "Israel",
     countryKey: "Israel",
-    embedUrl: "https://www.youtube.com/embed/MV2wIFYkmYA?autoplay=1&mute=1",
+    embedUrl: "https://www.youtube.com/embed/ITAlerjV8Ro?autoplay=1&mute=1&controls=0",
     language: "none",
     description: "Live view of the Western Wall",
     descriptionKey: "media.cameras.jerusalem",
@@ -137,7 +137,7 @@ const liveCameras: StreamSource[] = [
     category: "camera",
     country: "Israel",
     countryKey: "Israel",
-    embedUrl: "https://www.youtube.com/embed/JvTMNbk20os?autoplay=1&mute=1",
+    embedUrl: "https://www.youtube.com/embed/CXP_uPkf_sY?autoplay=1&mute=1&controls=0",
     language: "none",
     description: "Tel Aviv beach & skyline",
     descriptionKey: "media.cameras.telaviv",
@@ -148,7 +148,7 @@ const liveCameras: StreamSource[] = [
     category: "camera",
     country: "Israel",
     countryKey: "Israel",
-    embedUrl: "https://www.youtube.com/embed/7veP96YDAho?autoplay=1&mute=1",
+    embedUrl: "https://www.youtube.com/embed/nNegFX3ys5Q?autoplay=1&mute=1&controls=0",
     language: "none",
     description: "Haifa port area",
     descriptionKey: "media.cameras.haifa",
@@ -159,18 +159,18 @@ const liveCameras: StreamSource[] = [
     category: "camera",
     country: "Saudi Arabia",
     countryKey: "SaudiArabia",
-    embedUrl: "https://www.youtube.com/embed/PYMipRRmq5Q?autoplay=1&mute=1",
+    embedUrl: "https://www.youtube.com/embed/-t-yKcXSrhM?autoplay=1&mute=1&controls=0",
     language: "none",
     description: "Live from Mecca",
     descriptionKey: "media.cameras.mecca",
   },
   {
     id: "cam-dubai",
-    name: "Dubai Skyline",
+    name: "Dubai Marina",
     category: "camera",
     country: "UAE",
     countryKey: "UAE",
-    embedUrl: "https://www.youtube.com/embed/7Kzc7gIj9Os?autoplay=1&mute=1",
+    embedUrl: "https://www.youtube.com/embed/MfIpyflPbHQ?autoplay=1&mute=1&controls=0",
     language: "none",
     description: "Dubai live camera",
     descriptionKey: "media.cameras.dubai",
@@ -179,14 +179,13 @@ const liveCameras: StreamSource[] = [
 
 export function LiveMediaPanel() {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<"tv" | "camera">("tv");
   const [expandedStream, setExpandedStream] = useState<StreamSource | null>(null);
   const [collapsed, setCollapsed] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<string[]>(["kan11"]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(["kan11", "aljazeera", "cam-jerusalem", "cam-telaviv"]);
   const [selectorOpen, setSelectorOpen] = useState(false);
 
-  const sources = activeTab === "tv" ? tvChannels : liveCameras;
-  const selectedStreams = sources.filter((s) => selectedIds.includes(s.id));
+  const allSources = [...tvChannels, ...liveCameras];
+  const selectedStreams = allSources.filter((s) => selectedIds.includes(s.id));
 
   const toggleSelection = (id: string) => {
     setSelectedIds((prev) => {
@@ -195,17 +194,9 @@ export function LiveMediaPanel() {
         if (prev.length <= 1) return prev;
         return prev.filter((x) => x !== id);
       }
-      if (prev.length >= 3) return prev; // max 3
+      if (prev.length >= 4) return prev; // max 4
       return [...prev, id];
     });
-  };
-
-  // When switching tabs, reset selection to first source of that tab
-  const handleTabChange = (tab: "tv" | "camera") => {
-    setActiveTab(tab);
-    const firstSource = tab === "tv" ? tvChannels[0] : liveCameras[0];
-    setSelectedIds(firstSource ? [firstSource.id] : []);
-    setSelectorOpen(false);
   };
 
   const closeModal = useCallback(() => setExpandedStream(null), []);
@@ -251,37 +242,10 @@ export function LiveMediaPanel() {
             </span>
           </div>
 
-          <div className="flex items-center gap-1 ms-2">
-            <button
-              onClick={() => setActiveTab("tv")}
-              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider transition-colors ${
-                activeTab === "tv"
-                  ? "bg-primary/20 text-primary border border-primary/30"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              data-testid="media-tab-tv"
-            >
-              <Tv className="w-3 h-3" />
-              {t("media.tvChannels")}
-            </button>
-            <button
-              onClick={() => setActiveTab("camera")}
-              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider transition-colors ${
-                activeTab === "camera"
-                  ? "bg-primary/20 text-primary border border-primary/30"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              data-testid="media-tab-camera"
-            >
-              <Camera className="w-3 h-3" />
-              {t("media.liveCameras")}
-            </button>
-          </div>
-
           <div className="flex-1" />
 
           <Badge variant="outline" className="text-[8px] border-red-500/30 text-red-400 no-default-hover-elevate no-default-active-elevate">
-            {selectedStreams.length}/{sources.length} {t("media.live")}
+            {selectedStreams.length}/4 {t("media.live")}
           </Badge>
 
           <div className="relative">
@@ -295,13 +259,19 @@ export function LiveMediaPanel() {
             </button>
 
             {selectorOpen && (
-              <div className="absolute end-0 top-full mt-1 z-50 w-[240px] max-h-[200px] overflow-y-auto bg-card border border-border rounded-md shadow-lg p-1.5" data-testid="media-selector-dropdown">
+              <div className="absolute end-0 top-full mt-1 z-50 w-[260px] max-h-[320px] overflow-y-auto bg-card border border-border rounded-md shadow-lg p-1.5" data-testid="media-selector-dropdown">
                 <p className="text-[8px] text-muted-foreground uppercase tracking-wider px-1.5 py-1">
                   {t("media.selectUpTo3")}
                 </p>
-                {sources.map((source) => {
+
+                {/* TV Channels group */}
+                <div className="flex items-center gap-1.5 px-1.5 pt-2 pb-1">
+                  <Tv className="w-3 h-3 text-blue-400" />
+                  <span className="text-[8px] font-bold text-blue-400 uppercase tracking-wider">{t("media.tvChannels")}</span>
+                </div>
+                {tvChannels.map((source) => {
                   const isSelected = selectedIds.includes(source.id);
-                  const isDisabled = !isSelected && selectedIds.length >= 3;
+                  const isDisabled = !isSelected && selectedIds.length >= 4;
                   return (
                     <button
                       key={source.id}
@@ -330,6 +300,38 @@ export function LiveMediaPanel() {
                     </button>
                   );
                 })}
+
+                {/* Live Cameras group */}
+                <div className="flex items-center gap-1.5 px-1.5 pt-3 pb-1 border-t border-border/50 mt-1">
+                  <Camera className="w-3 h-3 text-purple-400" />
+                  <span className="text-[8px] font-bold text-purple-400 uppercase tracking-wider">{t("media.liveCameras")}</span>
+                </div>
+                {liveCameras.map((source) => {
+                  const isSelected = selectedIds.includes(source.id);
+                  const isDisabled = !isSelected && selectedIds.length >= 4;
+                  return (
+                    <button
+                      key={source.id}
+                      onClick={() => toggleSelection(source.id)}
+                      disabled={isDisabled}
+                      className={`w-full flex items-center gap-2 px-2 py-1 rounded text-start transition-colors ${
+                        isSelected
+                          ? "bg-primary/15 text-primary"
+                          : isDisabled
+                          ? "text-muted-foreground/40 cursor-not-allowed"
+                          : "text-foreground hover:bg-muted"
+                      }`}
+                      data-testid={`media-select-${source.id}`}
+                    >
+                      <div className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${
+                        isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"
+                      }`}>
+                        {isSelected && <span className="text-[8px] text-primary-foreground font-bold">✓</span>}
+                      </div>
+                      <span className="text-[9px] font-medium truncate">{source.name}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -344,10 +346,7 @@ export function LiveMediaPanel() {
         </div>
 
         {/* Selected channel previews — live iframes */}
-        <div className={`grid gap-2 p-2 ${
-          selectedStreams.length === 1 ? "grid-cols-1" :
-          selectedStreams.length === 2 ? "grid-cols-2" : "grid-cols-3"
-        }`}>
+        <div className="grid grid-cols-2 gap-2 p-2">
           {selectedStreams.map((source) => (
             <div
               key={source.id}
