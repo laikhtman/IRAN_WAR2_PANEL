@@ -44,7 +44,8 @@ CREATE TABLE IF NOT EXISTS news_items (
     url             TEXT,                               -- nullable, link to original
     category        VARCHAR(100)    NOT NULL,
     breaking        BOOLEAN         NOT NULL DEFAULT FALSE,
-    sentiment       REAL
+    sentiment       REAL,
+    language        VARCHAR(10)                         -- detected language code (en, he, ar, fa)
 );
 
 CREATE INDEX IF NOT EXISTS idx_news_items_timestamp ON news_items (timestamp DESC);
@@ -77,7 +78,10 @@ CREATE TABLE IF NOT EXISTS ai_summaries (
     threat_assessment   VARCHAR(20)     NOT NULL,       -- critical, high, medium, low
     key_points          JSONB           NOT NULL,       -- string[] stored as JSON array
     last_updated        TEXT            NOT NULL,       -- ISO 8601 string
-    recommendation      TEXT            NOT NULL
+    recommendation      TEXT            NOT NULL,
+    sources             JSONB,                           -- string[] of event IDs used
+    event_count         INTEGER,                         -- number of events analyzed
+    news_count          INTEGER                          -- number of news items analyzed
 );
 
 CREATE INDEX IF NOT EXISTS idx_ai_summaries_id_desc ON ai_summaries (id DESC);
@@ -181,6 +185,21 @@ CREATE TABLE IF NOT EXISTS agent_logs (
 
 CREATE INDEX IF NOT EXISTS idx_agent_logs_agent_id ON agent_logs (agent_id);
 CREATE INDEX IF NOT EXISTS idx_agent_logs_created_at ON agent_logs (created_at);
+
+
+-- ─── 12. User Feedback ──────────────────────────────────────────────────────
+-- User-submitted feedback from the dashboard.
+
+CREATE TABLE IF NOT EXISTS feedback (
+    id              SERIAL          PRIMARY KEY,
+    message         TEXT            NOT NULL,
+    email           VARCHAR(255),
+    url             TEXT,
+    user_agent      TEXT,
+    created_at      TEXT            NOT NULL DEFAULT (now()::text)
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback (created_at DESC);
 
 
 -- ─── Done ──────────────────────────────────────────────────────────────────

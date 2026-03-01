@@ -3,9 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Radio, Wifi, WifiOff, Activity, Volume2, VolumeX, Maximize2, Minimize2, TrendingDown, TrendingUp, Minus, HeartPulse, MoreVertical } from "lucide-react";
+import { Radio, Wifi, WifiOff, Activity, Volume2, VolumeX, Maximize2, Minimize2, TrendingDown, TrendingUp, Minus, MoreVertical } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
-import { Link } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { WsStatus } from "@/hooks/use-connection-status";
 
@@ -135,6 +134,7 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
       className="h-6 w-6"
       onClick={onToggleMute}
       title={isMuted ? "Unmute Alerts" : "Mute Alerts"}
+      aria-label={isMuted ? "Unmute Alerts" : "Mute Alerts"}
     >
       {isMuted ? (
         <VolumeX className="w-3.5 h-3.5 text-muted-foreground" />
@@ -151,6 +151,7 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
       className="h-6 w-6"
       onClick={onTogglePresentation}
       title={isPresentation ? "Exit Presentation" : "Enter Presentation"}
+      aria-label={isPresentation ? "Exit Presentation" : "Enter Presentation"}
     >
       {isPresentation ? (
         <Minimize2 className="w-3.5 h-3.5 text-primary" />
@@ -190,19 +191,6 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
       </TooltipContent>
     </Tooltip>
   ) : null;
-
-  const healthButton = (
-    <Link href="/health">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6"
-        title="System Health"
-      >
-        <HeartPulse className="w-3.5 h-3.5 text-muted-foreground hover:text-cyan-400" />
-      </Button>
-    </Link>
-  );
 
   const fullClocks = (
     <div className="flex items-center gap-3">
@@ -305,7 +293,6 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
               {/* Actions row */}
               <div className="border-t border-border pt-2 flex items-center gap-2 px-1">
                 {presentationButton}
-                {healthButton}
               </div>
             </div>
           )}
@@ -337,7 +324,6 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
           </div>
           <div className="flex items-center gap-3">
             <LanguageSwitcher />
-            {healthButton}
             <div className="h-4 w-px bg-border" />
             {compactClocks}
           </div>
@@ -363,8 +349,6 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
         {sentimentIndicator}
 
         <LanguageSwitcher />
-
-        {healthButton}
 
         <div className="h-4 w-px bg-border" />
 

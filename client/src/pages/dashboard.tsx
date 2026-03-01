@@ -12,6 +12,7 @@ import { LiveMediaPanel } from "@/components/live-media-panel";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { OfflineBanner } from "@/components/offline-banner";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { FeedbackDialog } from "@/components/feedback-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -269,7 +270,10 @@ export default function Dashboard() {
     ];
 
     return (
-      <div className="flex flex-col h-screen bg-background grid-overlay" data-testid="dashboard">
+      <div className="flex flex-col h-screen overflow-hidden bg-background grid-overlay" data-testid="dashboard">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:p-2 focus:bg-primary focus:text-primary-foreground">
+          Skip to content
+        </a>
         <OfflineBanner />
         <HeaderBar
           isMuted={isMuted}
@@ -283,16 +287,19 @@ export default function Dashboard() {
         <KeyboardShortcuts onToggleMute={handleToggleMute} onTogglePresentation={handleTogglePresentation} />
 
         {/* Tab content area — fills between header and tab bar */}
-        <div className="flex-1 flex flex-col min-h-0 pb-14">{tabContent()}</div>
+        <div id="main-content" className="flex-1 flex flex-col min-h-0 pb-14">{tabContent()}</div>
 
         {/* Bottom Tab Bar */}
-        <nav className="fixed bottom-0 left-0 right-0 z-[1000] h-14 pb-[env(safe-area-inset-bottom)] bg-card/95 backdrop-blur-md border-t border-border flex items-center justify-around">
+        <nav className="fixed bottom-0 left-0 right-0 z-[1000] h-14 pb-[env(safe-area-inset-bottom)] bg-card/95 backdrop-blur-md border-t border-border flex items-center justify-around" role="tablist" aria-label="Dashboard navigation">
           {tabs.map(tab => {
             const active = mobileTab === tab.key;
             return (
               <button
                 key={tab.key}
                 onClick={() => setMobileTab(tab.key)}
+                role="tab"
+                aria-selected={active}
+                aria-label={tab.label}
                 className={`relative flex flex-col items-center justify-center flex-1 h-full ${
                   active ? "border-t-2 border-primary text-primary" : "text-muted-foreground"
                 }`}
@@ -306,6 +313,7 @@ export default function Dashboard() {
             );
           })}
         </nav>
+        <FeedbackDialog />
       </div>
     );
   }
@@ -339,7 +347,10 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-background grid-overlay" data-testid="dashboard">
+    <div className="flex flex-col h-screen overflow-hidden bg-background grid-overlay" data-testid="dashboard">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:p-2 focus:bg-primary focus:text-primary-foreground">
+        Skip to content
+      </a>
       <OfflineBanner />
       <HeaderBar
         isMuted={isMuted}
@@ -352,7 +363,7 @@ export default function Dashboard() {
       />
       <KeyboardShortcuts onToggleMute={handleToggleMute} onTogglePresentation={handleTogglePresentation} />
 
-      <div className="flex-1 flex min-h-0">
+      <div id="main-content" className="flex-1 flex min-h-0">
         {/* ─── Main center column (map + live media + ticker) ─── */}
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 flex min-h-0">
@@ -453,6 +464,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      <FeedbackDialog />
     </div>
   );
 }

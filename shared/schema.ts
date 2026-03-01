@@ -44,6 +44,7 @@ export const newsItems = pgTable("news_items", {
   category: varchar("category", { length: 100 }).notNull(),
   breaking: boolean("breaking").notNull().default(false),
   sentiment: real("sentiment"),
+  language: varchar("language", { length: 10 }),
 });
 
 export const alerts = pgTable("alerts", {
@@ -63,6 +64,9 @@ export const aiSummaries = pgTable("ai_summaries", {
   keyPoints: jsonb("key_points").notNull().$type<string[]>(),
   lastUpdated: text("last_updated").notNull(),
   recommendation: text("recommendation").notNull(),
+  sources: jsonb("sources").$type<string[]>(),
+  eventCount: integer("event_count"),
+  newsCount: integer("news_count"),
 });
 
 export const dataSourceStatus = pgTable("data_source_status", {
@@ -121,6 +125,7 @@ export const newsItemSchema = z.object({
   category: z.string(),
   breaking: z.boolean(),
   sentiment: z.number().min(-1).max(1).optional(),
+  language: z.string().optional(),
 });
 
 export type NewsItem = z.infer<typeof newsItemSchema>;
@@ -162,6 +167,9 @@ export const aiSummarySchema = z.object({
   keyPoints: z.array(z.string()),
   lastUpdated: z.string(),
   recommendation: z.string(),
+  sources: z.array(z.string()).optional(),
+  eventCount: z.number().optional(),
+  newsCount: z.number().optional(),
 });
 
 export type AISummary = z.infer<typeof aiSummarySchema>;

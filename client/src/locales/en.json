@@ -68,7 +68,13 @@
     "items": "{{count}} items",
     "loading": "Loading news feed...",
     "breaking": "BREAKING",
-    "loadingSkeleton": "Fetching latest news..."
+    "loadingSkeleton": "Fetching latest news...",
+    "search": "Search news...",
+    "all": "All",
+    "1h": "1h",
+    "6h": "6h",
+    "24h": "24h",
+    "noResults": "No news matching filters"
   },
   "ai": {
     "title": "AI Situation Analysis",

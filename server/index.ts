@@ -10,6 +10,7 @@ import { loadSettings, getSetting, onSettingChange } from "./admin-settings";
 import { registerAdminRoutes } from "./admin-routes";
 import { getAdminPath, isAdminEnabled } from "./admin-auth";
 import { startAgentScheduler, stopAgentScheduler } from "./agent-scheduler";
+import { requestLogger } from "./logger";
 
 const app = express();
 app.set('trust proxy', 1); // Behind Cloudflare/Nginx — needed for correct rate-limiting by real client IP
@@ -50,6 +51,9 @@ app.use("/feed.xml", (_req, res, next) => {
 
 // Country-based geo-blocking (reads CF-IPCountry header from Cloudflare)
 app.use(geoBlockMiddleware);
+
+// Structured request logging for API routes
+app.use("/api", requestLogger());
 
 // Early hints for critical resources on HTML pages
 app.use((req, res, next) => {

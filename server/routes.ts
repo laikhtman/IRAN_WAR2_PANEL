@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { WebSocketServer, WebSocket } from "ws";
 import { startDataFetcher, setNewEventCallback, processRSSWebhook, getDataSourceHealthStatus } from "./data-fetcher";
+import { getRecentLogs, wsConnect, wsDisconnect } from "./logger";
 import type { WarEvent } from "@shared/schema";
 import { BASE_URL, ROBOTS_DISALLOW, SUPPORTED_LANGS, RSS } from "@shared/seo-config";
 
@@ -119,6 +120,40 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/logs", (req, res) => {
+    const level = req.query.level as string | undefined;
+    const source = req.query.source as string | undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 100;
+    const logs = getRecentLogs({
+      level: level as any,
+      source,
+      limit: Math.min(limit, 500),
+    });
+    res.json(logs);
+  });
+
+  app.post("/api/feedback", async (req, res) => {
+    try {
+      const { message, email, url, userAgent, timestamp } = req.body || {};
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+      if (message.length > 2000) {
+        return res.status(400).json({ error: "Message too long" });
+      }
+      await storage.submitFeedback({
+        message: message.trim(),
+        email: email || null,
+        url: url || null,
+        userAgent: userAgent || null,
+        createdAt: timestamp || new Date().toISOString(),
+      });
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to save feedback" });
+    }
+  });
+
   app.get("/api/news/sentiment", async (_req, res) => {
     const sentiment = await storage.getNewsSentiment();
     res.json(sentiment);
@@ -212,10 +247,12 @@ export async function registerRoutes(
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
   const clients = new Set<WebSocket>();
 
-  wss.on("connection", (ws) => {
+  wss.on("connection", (ws, req) => {
     clients.add(ws);
+    wsConnect(clients.size, req.socket.remoteAddress);
     ws.on("close", () => {
       clients.delete(ws);
+      wsDisconnect(clients.size, req.socket.remoteAddress);
     });
   });
 
