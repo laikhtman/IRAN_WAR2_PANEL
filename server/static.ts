@@ -80,6 +80,7 @@ export function serveStatic(app: Express) {
       ? cachedHome[lang]
       : injectSeo(rawHtml, lang, pagePath);
 
+    res.removeHeader("Cache-Control");
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     res.setHeader("Vary", "Accept-Language, Cookie");
@@ -92,8 +93,8 @@ function injectSeo(template: string, lang: SupportedLang, pagePath: string): str
   let html = template;
   const dir = getLangDir(lang);
 
-  // Replace <html lang="en"> with correct lang and dir
-  html = html.replace(/<html\s+lang="[^"]*"/, `<html lang="${lang}" dir="${dir}"`);
+  // Replace <html lang="en" dir="ltr"> with correct lang and dir
+  html = html.replace(/<html\s+lang="[^"]*"(\s+dir="[^"]*")?/, `<html lang="${lang}" dir="${dir}"`);
 
   // Remove the fallback <title> and <meta description> (they'll be in SEO_META)
   html = html.replace(/<title>[^<]*<\/title>/, "");

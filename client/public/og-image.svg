@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0e14;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#111827;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)" />
+
+  <!-- Grid overlay -->
+  <g opacity="0.05" stroke="#3b82f6" stroke-width="1">
+    <line x1="0" y1="0" x2="1200" y2="630" />
+    <line x1="0" y1="630" x2="1200" y2="0" />
+    <line x1="600" y1="0" x2="600" y2="630" />
+    <line x1="0" y1="315" x2="1200" y2="315" />
+    <line x1="300" y1="0" x2="300" y2="630" />
+    <line x1="900" y1="0" x2="900" y2="630" />
+    <line x1="0" y1="157" x2="1200" y2="157" />
+    <line x1="0" y1="472" x2="1200" y2="472" />
+  </g>
+
+  <!-- Decorative radar circles -->
+  <g opacity="0.08" stroke="#3b82f6" fill="none" stroke-width="1">
+    <circle cx="900" cy="350" r="80" />
+    <circle cx="900" cy="350" r="140" />
+    <circle cx="900" cy="350" r="200" />
+    <circle cx="900" cy="350" r="260" />
+  </g>
+
+  <!-- Decorative dots (simulating map markers) -->
+  <g filter="url(#glow)">
+    <circle cx="820" cy="300" r="4" fill="#ef4444" opacity="0.8" />
+    <circle cx="880" cy="280" r="3" fill="#22c55e" opacity="0.8" />
+    <circle cx="950" cy="340" r="5" fill="#ef4444" opacity="0.8" />
+    <circle cx="870" cy="370" r="3" fill="#06b6d4" opacity="0.8" />
+    <circle cx="930" cy="400" r="4" fill="#eab308" opacity="0.8" />
+    <circle cx="980" cy="310" r="3" fill="#22c55e" opacity="0.8" />
+    <circle cx="850" cy="420" r="3" fill="#f97316" opacity="0.8" />
+    <circle cx="770" cy="360" r="4" fill="#ef4444" opacity="0.8" />
+  </g>
+
+  <!-- Top accent line -->
+  <rect x="0" y="0" width="1200" height="4" fill="url(#accent)" />
+
+  <!-- Shield icon -->
+  <g transform="translate(80, 180)" fill="none" stroke="#3b82f6" stroke-width="3" opacity="0.9">
+    <path d="M30 5 L55 15 L55 35 C55 55 42 70 30 75 C18 70 5 55 5 35 L5 15 Z" />
+    <path d="M20 38 L28 46 L42 28" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  <!-- Main title -->
+  <text x="160" y="230" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="64" font-weight="800" fill="white" letter-spacing="-1">
+    IntelHQ
+  </text>
+  <text x="160" y="230" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="64" font-weight="800" fill="url(#accent)" letter-spacing="-1" opacity="0.15">
+    IntelHQ
+  </text>
+
+  <!-- Subtitle -->
+  <text x="160" y="280" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="24" fill="#94a3b8" letter-spacing="2">
+    REAL-TIME INTELLIGENCE DASHBOARD
+  </text>
+
+  <!-- Divider -->
+  <rect x="160" y="310" width="120" height="3" fill="url(#accent)" rx="1.5" />
+
+  <!-- Feature bullets -->
+  <g font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="18" fill="#64748b">
+    <circle cx="172" cy="355" r="4" fill="#ef4444" />
+    <text x="188" y="360">Missile &amp; Drone Tracking</text>
+
+    <circle cx="172" cy="395" r="4" fill="#22c55e" />
+    <text x="188" y="400">Defense System Monitoring</text>
+
+    <circle cx="172" cy="435" r="4" fill="#eab308" />
+    <text x="188" y="440">Live Alerts &amp; AI Analysis</text>
+
+    <circle cx="172" cy="475" r="4" fill="#06b6d4" />
+    <text x="188" y="480">Multi-Source OSINT Feeds</text>
+  </g>
+
+  <!-- Domain -->
+  <text x="160" y="560" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="20" fill="#3b82f6" font-weight="600" letter-spacing="1">
+    intelhq.io
+  </text>
+
+  <!-- LIVE badge -->
+  <g transform="translate(1020, 50)">
+    <rect x="0" y="0" width="100" height="36" rx="18" fill="#ef4444" opacity="0.15" />
+    <rect x="0" y="0" width="100" height="36" rx="18" fill="none" stroke="#ef4444" stroke-width="1.5" opacity="0.5" />
+    <circle cx="24" cy="18" r="5" fill="#ef4444" />
+    <text x="58" y="24" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="16" fill="#ef4444" font-weight="700" text-anchor="middle" letter-spacing="2">LIVE</text>
+  </g>
+
+  <!-- Bottom accent line -->
+  <rect x="0" y="626" width="1200" height="4" fill="url(#accent)" />
+</svg>
