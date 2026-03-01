@@ -23,6 +23,7 @@ export interface IStorage {
   deleteEventsByType(type: string): Promise<void>;
   addSatelliteImages(images: Array<{ id: string; eventId: string; imageUrl: string; bboxWest: number; bboxSouth: number; bboxEast: number; bboxNorth: number; capturedAt: string; createdAt: string }>): Promise<void>;
   getSatelliteImages(): Promise<SatelliteImage[]>;
+  submitFeedback(feedback: { message: string; email: string | null; url: string | null; userAgent: string | null; createdAt: string }): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -357,6 +358,12 @@ export class DatabaseStorage implements IStorage {
   async isSeeded(): Promise<boolean> {
     const result = await db.select({ count: sql<number>`count(*)` }).from(warEvents);
     return Number(result[0].count) > 0;
+  }
+
+  async submitFeedback(feedback: { message: string; email: string | null; url: string | null; userAgent: string | null; createdAt: string }): Promise<void> {
+    await db.execute(
+      sql`INSERT INTO feedback (message, email, url, user_agent, created_at) VALUES (${feedback.message}, ${feedback.email}, ${feedback.url}, ${feedback.userAgent}, ${feedback.createdAt})`
+    );
   }
 }
 

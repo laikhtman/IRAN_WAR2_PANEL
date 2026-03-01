@@ -989,6 +989,38 @@ const dataSources: DataSourceConfig[] = [
 
 const intervals: ReturnType<typeof setInterval>[] = [];
 
+// ── Rate limit guards for paid APIs ──────────────────────────────────────
+interface RateLimit {
+  maxPerHour: number;
+  count: number;
+  resetAt: number;
+}
+
+const rateLimits: Record<string, RateLimit> = {
+  "adsb-exchange": { maxPerHour: 60, count: 0, resetAt: 0 },
+  "marine-traffic": { maxPerHour: 12, count: 0, resetAt: 0 },
+  "sentinel-hub": { maxPerHour: 10, count: 0, resetAt: 0 },
+};
+
+function checkRateLimit(sourceName: string): boolean {
+  const limit = rateLimits[sourceName];
+  if (!limit) return true; // no rate limit configured → allow
+
+  const now = Date.now();
+  if (now >= limit.resetAt) {
+    limit.count = 0;
+    limit.resetAt = now + 3_600_000; // 1 hour from now
+  }
+
+  if (limit.count >= limit.maxPerHour) {
+    console.warn(`[rate-limit] ${sourceName}: ${limit.count}/${limit.maxPerHour} per hour — SKIPPED (resets in ${Math.round((limit.resetAt - now) / 60000)}m)`);
+    return false;
+  }
+
+  limit.count++;
+  return true;
+}
+
 export function startDataFetcher(): void {
   console.log("[data-fetcher] Starting background data fetcher...");
 
@@ -1012,6 +1044,7 @@ export function startDataFetcher(): void {
     console.log(`[data-fetcher] Registering source "${source.name}" (interval: ${Math.round(source.fetchIntervalMs / 1000)}s)`);
 
     const run = async () => {
+      if (!checkRateLimit(source.name)) return;
       try {
         await source.fetchFn();
         recordSourceRun(source.name);
@@ -1042,6 +1075,7 @@ export async function triggerFetchNow(sourceName: string): Promise<string> {
   const source = dataSources.find(s => s.name === sourceName);
   if (!source) return `Source "${sourceName}" not found`;
   if (!source.enabled) return `Source "${sourceName}" is disabled`;
+  if (!checkRateLimit(sourceName)) return `Source "${sourceName}" rate-limited — try again later`;
   
   try {
     await source.fetchFn();
