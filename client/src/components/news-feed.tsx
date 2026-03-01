@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import type { NewsItem } from "@shared/schema";
 import { Newspaper, Zap, Search, X } from "lucide-react";
@@ -113,7 +112,7 @@ export function NewsFeed({ news, isLoading = false }: NewsFeedProps) {
   const hasActiveFilters = searchQuery || langFilter !== "All" || timeFilter !== "all";
 
   return (
-    <div className="flex flex-col h-full" data-testid="news-feed">
+    <div data-testid="news-feed">
       {/* Header */}
       <div className="flex items-center justify-between gap-1 mb-1.5">
         <div className="flex items-center gap-2">
@@ -190,8 +189,8 @@ export function NewsFeed({ news, isLoading = false }: NewsFeedProps) {
       </div>
 
       {/* News list */}
-      <ScrollArea className="flex-1">
-        <div className="space-y-1.5 pr-1">
+      <div>
+        <div className="space-y-1.5">
           {isLoading && news.length === 0 ? (
             <div className="space-y-1.5">
               {[...Array(4)].map((_, i) => (
@@ -263,7 +262,7 @@ export function NewsFeed({ news, isLoading = false }: NewsFeedProps) {
             ))
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

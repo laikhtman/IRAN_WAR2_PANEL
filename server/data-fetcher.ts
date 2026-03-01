@@ -96,7 +96,14 @@ export async function fetchViaProxy(url: string): Promise<Response> {
     }
     return fetch(proxyUrl, { headers });
   }
-  return fetch(url);
+  // Direct fetch with browser-like headers for better compatibility
+  return fetch(url, {
+    headers: {
+      "Referer": "https://www.oref.org.il/",
+      "X-Requested-With": "XMLHttpRequest",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    },
+  });
 }
 
 // ─── City-to-coordinate lookup for Pikud HaOref alerts ────────────────────
@@ -933,9 +940,9 @@ const dataSources: DataSourceConfig[] = [
     name: "oref-alerts",
     enabled: true,
     fetchIntervalMs: 5000,
-    proxyRequired: true,
+    proxyRequired: false,
     fetchFn: fetchOrefAlerts,
-    requiredEnvVars: ["PROXY_BASE_URL"],
+    requiredEnvVars: [],
   },
   {
     name: "rss-app-feeds",
@@ -1053,6 +1060,9 @@ export function startDataFetcher(): void {
         console.error(`[data-fetcher] Error fetching "${source.name}":`, err.message);
       }
     };
+
+    // Run an initial fetch immediately so data appears on startup
+    run().catch(() => {});
 
     const interval = setInterval(run, source.fetchIntervalMs);
     intervals.push(interval);

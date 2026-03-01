@@ -265,10 +265,18 @@ export async function registerRoutes(
     });
   };
 
-  // Seed data — gated behind ENABLE_SEED_DATA env var for demo deployments
-  if (process.env.ENABLE_SEED_DATA === "true") {
+  // Seed data — auto-seed when no external data sources are configured (demo mode)
+  const hasAnyDataSource = [
+    "PROXY_BASE_URL", "RSSAPP_API_KEY", "OPENAI_API_KEY",
+    "MARINETRAFFIC_API_KEY", "ADSBX_API_KEY", "SENTINELHUB_INSTANCE_ID"
+  ].some(key => !!process.env[key]);
+
+  if (process.env.ENABLE_SEED_DATA === "true" || !hasAnyDataSource) {
     const { seedIfEmpty } = await import("./seed");
     await seedIfEmpty();
+    if (!hasAnyDataSource) {
+      console.log("[seed] No external data sources configured — using seed data for demo mode");
+    }
   }
 
   setNewEventCallback(broadcast);
