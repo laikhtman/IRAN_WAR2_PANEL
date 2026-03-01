@@ -54,7 +54,8 @@ export function serveStatic(app: Express) {
   // Serve static assets (JS, CSS, images) with long cache
   app.use(
     express.static(distPath, {
-      index: false, // Don't serve index.html for "/"
+      index: false, // Don't serve index.html directly
+      fallthrough: true, // Allow unknown paths to fall through to the SPA handler
       setHeaders(res, filePath) {
         // Vite hashed assets get immutable cache
         if (filePath.includes("/assets/")) {
@@ -65,7 +66,12 @@ export function serveStatic(app: Express) {
   );
 
   // SPA catch-all — inject SEO meta tags per language
-  app.use("/{*path}", (req, res) => {
+  app.use("*", (req, res) => {
+    // Ignore API routes just in case they fell through
+    if (req.originalUrl.startsWith("/api")) {
+      return res.status(404).json({ error: "Not found" });
+    }
+
     const lang = detectLang(req);
     const pagePath = req.path;
 
