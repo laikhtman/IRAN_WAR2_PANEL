@@ -6,6 +6,7 @@ import { Newspaper, Zap } from "lucide-react";
 
 interface NewsFeedProps {
   news: NewsItem[];
+  isLoading?: boolean;
 }
 
 function getSentimentColor(sentiment: number | undefined): string | null {
@@ -45,7 +46,7 @@ function useFormatTimeAgo() {
   };
 }
 
-export function NewsFeed({ news }: NewsFeedProps) {
+export function NewsFeed({ news, isLoading = false }: NewsFeedProps) {
   const { t } = useTranslation();
   const formatTimeAgo = useFormatTimeAgo();
 
@@ -59,13 +60,22 @@ export function NewsFeed({ news }: NewsFeedProps) {
           </h3>
         </div>
         <span className="text-[11px] text-muted-foreground tabular-nums">
-          {t("news.items", { count: news.length })}
+          {isLoading && news.length === 0 ? t("news.loadingSkeleton") : t("news.items", { count: news.length })}
         </span>
       </div>
 
       <ScrollArea className="flex-1">
         <div className="space-y-1.5 pr-1">
-          {news.length === 0 ? (
+          {isLoading && news.length === 0 ? (
+            <div className="space-y-1.5">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="border border-border rounded-md p-2.5 bg-card/20 animate-pulse">
+                  <div className="h-3 bg-muted rounded w-full mb-2" />
+                  <div className="h-3 bg-muted rounded w-2/3" />
+                </div>
+              ))}
+            </div>
+          ) : news.length === 0 ? (
             <div className="flex items-center justify-center h-20">
               <p className="text-[11px] text-muted-foreground">{t("news.loading")}</p>
             </div>

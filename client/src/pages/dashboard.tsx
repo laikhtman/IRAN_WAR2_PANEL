@@ -148,7 +148,7 @@ export default function Dashboard() {
     refetchInterval: 10000,
   });
 
-  const { data: news } = useQuery<NewsItem[]>({
+  const { data: news, isLoading: newsLoading } = useQuery<NewsItem[]>({
     queryKey: ["/api/news"],
     refetchInterval: 20000,
   });
@@ -189,7 +189,7 @@ export default function Dashboard() {
         case "map":
           return (
             <div className="flex-1 relative min-h-0">
-              <WarMap events={uniqueEvents} alerts={alerts || []} />
+              <WarMap events={uniqueEvents} alerts={alerts || []} isMobile={true} />
               <div className="absolute bottom-0 left-0 right-0 z-[400]">
                 <NewsTicker news={news || []} />
               </div>
@@ -226,7 +226,7 @@ export default function Dashboard() {
             <ScrollArea className="flex-1">
               <div className="p-3 pb-[env(safe-area-inset-bottom)]">
                 <ErrorBoundary fallbackTitle="News failed">
-                  <NewsFeed news={news || []} />
+                  <NewsFeed news={news || []} isLoading={newsLoading} />
                 </ErrorBoundary>
               </div>
             </ScrollArea>
@@ -358,7 +358,7 @@ export default function Dashboard() {
           <div className="flex-1 flex min-h-0">
             {/* Map area */}
             <div className="flex-1 min-w-0 relative">
-              <WarMap events={uniqueEvents} alerts={alerts || []} />
+              <WarMap events={uniqueEvents} alerts={alerts || []} isMobile={false} />
 
               {/* Presentation mode: floating stat badges */}
               {isPresentation && stats && (
@@ -445,7 +445,7 @@ export default function Dashboard() {
 
                 <div className="p-3">
                   <ErrorBoundary fallbackTitle="News failed">
-                    <NewsFeed news={news || []} />
+                    <NewsFeed news={news || []} isLoading={newsLoading} />
                   </ErrorBoundary>
                 </div>
               </div>

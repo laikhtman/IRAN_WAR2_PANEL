@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, lt, and } from "drizzle-orm";
 import { warEvents, newsItems, alerts, aiSummaries, satelliteImages } from "@shared/schema";
 import type { WarEvent, Statistics, NewsItem, Alert, AISummary, SatelliteImage } from "@shared/schema";
 import { randomUUID } from "crypto";
@@ -14,6 +14,7 @@ export interface IStorage {
   getAlerts(): Promise<Alert[]>;
   addAlerts(alertList: Alert[]): Promise<void>;
   updateAlert(id: string, active: boolean): Promise<void>;
+  expireAlertsBefore(cutoffIso: string): Promise<void>;
   getAISummary(): Promise<AISummary>;
   setAISummary(summary: AISummary): Promise<void>;
   isSeeded(): Promise<boolean>;
@@ -135,14 +136,14 @@ export class DatabaseStorage implements IStorage {
       totalDronesIntercepted: dronesIntercepted,
       interceptionRate: rate,
       byCountry: filteredByCountry,
-      bySystem: {
+      bySystem: intercepted > 0 ? {
         "Iron Dome": Math.round(intercepted * 0.6),
         "Arrow-2": Math.round(intercepted * 0.1),
         "Arrow-3": Math.round(intercepted * 0.07),
         "David's Sling": Math.round(intercepted * 0.14),
         "THAAD (US)": Math.round(intercepted * 0.04),
         "Patriot (US)": Math.round(intercepted * 0.05),
-      },
+      } : {},
       activeAlerts: Number(activeAlertCount[0].count),
       last24hEvents: recent.length,
     };
@@ -220,6 +221,12 @@ export class DatabaseStorage implements IStorage {
 
   async updateAlert(id: string, active: boolean): Promise<void> {
     await db.update(alerts).set({ active }).where(eq(alerts.id, id));
+  }
+
+  async expireAlertsBefore(cutoffIso: string): Promise<void> {
+    await db.update(alerts)
+      .set({ active: false })
+      .where(and(eq(alerts.active, true), lt(alerts.timestamp, cutoffIso)));
   }
 
   async getAISummary(): Promise<AISummary> {

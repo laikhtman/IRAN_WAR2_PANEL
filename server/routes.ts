@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { WebSocketServer, WebSocket } from "ws";
-import { startDataFetcher, setNewEventCallback, processRSSWebhook } from "./data-fetcher";
+import { startDataFetcher, setNewEventCallback, processRSSWebhook, getDataSourceHealthStatus } from "./data-fetcher";
 import type { WarEvent } from "@shared/schema";
 import { BASE_URL, ROBOTS_DISALLOW, SUPPORTED_LANGS, RSS } from "@shared/seo-config";
 
@@ -108,6 +108,15 @@ export async function registerRoutes(
       status: "ok",
       timestamp: new Date().toISOString(),
     });
+  });
+
+  app.get("/api/data-sources/status", async (_req, res) => {
+    try {
+      const status = getDataSourceHealthStatus();
+      res.json(status);
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to retrieve data source status" });
+    }
   });
 
   app.get("/api/news/sentiment", async (_req, res) => {

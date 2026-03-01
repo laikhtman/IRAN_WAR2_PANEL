@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { AISummary } from "@shared/schema";
-import { Brain, ChevronRight, Shield } from "lucide-react";
+import { Brain, ChevronRight, Shield, AlertTriangle } from "lucide-react";
 
 const threatColors: Record<string, string> = {
   critical: "text-red-400 bg-red-500/20 border-red-500/30",
@@ -10,6 +10,14 @@ const threatColors: Record<string, string> = {
   medium: "text-yellow-400 bg-yellow-500/20 border-yellow-500/30",
   low: "text-emerald-400 bg-emerald-500/20 border-emerald-500/30",
 };
+
+function formatRelativeTime(iso: string): string {
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
 
 interface AISummaryPanelProps {
   summary: AISummary | null;
@@ -85,9 +93,16 @@ export function AISummaryPanel({ summary }: AISummaryPanelProps) {
             </p>
           </div>
 
-          <p className="text-[11px] text-muted-foreground text-right">
-            {t("ai.updated")}: {new Date(summary.lastUpdated).toLocaleTimeString()}
+          <p className="text-[11px] text-muted-foreground text-right" title={new Date(summary.lastUpdated).toLocaleString()}>
+            {t("ai.updated")}: {formatRelativeTime(summary.lastUpdated)}
           </p>
+
+          <div className="flex items-start gap-1.5 pt-1 border-t border-border">
+            <AlertTriangle className="w-3 h-3 text-muted-foreground/50 flex-shrink-0 mt-0.5" />
+            <p className="text-[10px] text-muted-foreground/50 leading-relaxed italic">
+              {t("ai.disclaimer")}
+            </p>
+          </div>
         </div>
       </ScrollArea>
     </div>

@@ -7,6 +7,9 @@
     "reconnecting": "Reconnecting",
     "liveFeed": "Live Feed",
     "noData": "No Data",
+    "live": "LIVE",
+    "connectedAwaiting": "Connected — awaiting data",
+    "offline": "Offline",
     "local": "Local",
     "israelTime": "Israel (IDT)",
     "tehranTime": "Tehran (IRST)"
@@ -24,7 +27,10 @@
     "int": "int.",
     "defenseSystems": "Defense Systems",
     "activeAlerts": "Active Alerts",
-    "events24h": "24h Events"
+    "events24h": "24h Events",
+    "noEvents": "No combat events reported in the last 24 hours.",
+    "noEventsHint": "Statistics populate automatically when events are detected.",
+    "notApplicable": "N/A"
   },
   "events": {
     "title": "Live Event Feed",
@@ -40,7 +46,9 @@
       "ceasefire": "CEASEFIRE",
       "military_operation": "MIL. OPERATION",
       "explosion": "EXPLOSION",
-      "sirens": "SIRENS"
+      "sirens": "SIRENS",
+      "naval_movement": "NAVAL MOVEMENT",
+      "aircraft_tracking": "AIRCRAFT TRACKING"
     },
     "threat": {
       "critical": "CRITICAL",
@@ -59,7 +67,8 @@
     "title": "News Feed",
     "items": "{{count}} items",
     "loading": "Loading news feed...",
-    "breaking": "BREAKING"
+    "breaking": "BREAKING",
+    "loadingSkeleton": "Fetching latest news..."
   },
   "ai": {
     "title": "AI Situation Analysis",
@@ -67,7 +76,8 @@
     "threat": "THREAT",
     "keyPoints": "Key Points",
     "recommendation": "Recommendation",
-    "updated": "Updated"
+    "updated": "Updated",
+    "disclaimer": "AI-generated analysis based on available data. May contain inaccuracies."
   },
   "alerts": {
     "title": "Oref Alerts",
