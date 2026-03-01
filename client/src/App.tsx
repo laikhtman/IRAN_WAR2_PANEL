@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -14,17 +14,23 @@ const TvDashboard = lazy(() => import("@/pages/tv-dashboard"));
 const AdminPanel = lazy(() => import("@/pages/admin/index"));
 
 function Router() {
+  const [location] = useLocation();
+
+  // Admin route catch-all (bypasses strict Wouter matching)
+  if (location.startsWith("/panel-272d672e974546a7")) {
+    return (
+      <Suspense fallback={<div className="flex h-screen items-center justify-center bg-[#0a0e14] text-slate-400">Loading Admin...</div>}>
+        <AdminPanel />
+      </Suspense>
+    );
+  }
+
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/tv">
         <Suspense fallback={<div className="flex h-screen items-center justify-center bg-background text-foreground">Loading TV Mode...</div>}>
           <TvDashboard />
-        </Suspense>
-      </Route>
-      <Route path="/panel-272d672e974546a7/:rest*">
-        <Suspense fallback={<div className="flex h-screen items-center justify-center bg-[#0a0e14] text-slate-400">Loading Admin...</div>}>
-          <AdminPanel />
         </Suspense>
       </Route>
       <Route component={NotFound} />
