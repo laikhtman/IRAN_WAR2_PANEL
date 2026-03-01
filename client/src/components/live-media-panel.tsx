@@ -108,7 +108,7 @@ function StreamIframe({ src, className, sandbox, ...rest }: React.IframeHTMLAttr
         className={`${className} ${loadState === "loading" ? "opacity-0 pointer-events-none" : ""}`}
         onLoad={handleLoad}
         onError={handleError}
-        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-without-user-activation"
+        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
         {...rest}
       />
     </>
