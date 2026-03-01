@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import type { WarEvent } from "@shared/schema";
 import { Crosshair, Shield, Target, Zap, AlertTriangle, Radio } from "lucide-react";
 
@@ -61,7 +60,7 @@ export function EventFeed({ events }: EventFeedProps) {
   const formatTimeAgo = useFormatTimeAgo();
 
   return (
-    <div className="flex flex-col h-full contain-layout" data-testid="event-feed">
+    <div data-testid="event-feed">
       <div className="flex items-center justify-between gap-1 px-1 mb-2">
         <h3 className="text-[11px] uppercase tracking-[0.2em] text-primary font-bold">
           {t("events.title")}
@@ -72,8 +71,8 @@ export function EventFeed({ events }: EventFeedProps) {
         </div>
       </div>
 
-      <ScrollArea className="flex-1" aria-live="polite">
-        <div className="space-y-1.5 pr-2">
+      <div aria-live="polite">
+        <div className="space-y-1.5">
           {events.length === 0 ? (
             <div className="flex items-center justify-center h-20">
               <p className="text-[11px] text-muted-foreground">{t("events.noEvents")}</p>
@@ -126,7 +125,7 @@ export function EventFeed({ events }: EventFeedProps) {
             })
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

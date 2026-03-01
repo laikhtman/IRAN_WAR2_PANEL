@@ -88,18 +88,21 @@ interface WarMapProps {
   isMobile?: boolean;
 }
 
-const TILE_LAYERS: Record<string, { url: string; label: string; attribution?: string }> = {
+const TILE_LAYERS: Record<string, { url: string; label: string; attribution: string }> = {
   dark: {
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
     label: "Dark",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
   },
   terrain: {
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     label: "Terrain",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   },
   satellite: {
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     label: "Satellite",
+    attribution: '&copy; Esri',
   },
 };
 
@@ -150,7 +153,14 @@ export function WarMap({ events, alerts, isMobile = false }: WarMapProps) {
         <TileLayer
           key={mapStyle}
           url={TILE_LAYERS[mapStyle]?.url || TILE_LAYERS.dark.url}
-          {...(isMobile ? { detectRetina: false } : {})}
+          attribution={TILE_LAYERS[mapStyle]?.attribution}
+          subdomains="abcd"
+          maxZoom={19}
+          eventHandlers={{
+            tileerror: (e: any) => {
+              console.warn("[map] Tile load error:", e?.tile?.src);
+            },
+          }}
         />
         <MapUpdater />
 

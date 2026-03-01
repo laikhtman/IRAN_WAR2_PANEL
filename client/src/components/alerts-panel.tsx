@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Alert } from "@shared/schema";
 import { AlertTriangle, MapPin } from "lucide-react";
 
@@ -14,7 +13,7 @@ export function AlertsPanel({ alerts }: AlertsPanelProps) {
   const recentInactive = alerts.filter(a => !a.active).slice(0, 3);
 
   return (
-    <div className="flex flex-col h-full" data-testid="alerts-panel">
+    <div data-testid="alerts-panel">
       <div className="flex items-center justify-between gap-1 mb-2">
         <div className="flex items-center gap-2">
           <AlertTriangle className={`w-3.5 h-3.5 ${activeAlerts.length > 0 ? "text-red-400 animate-blink-alert" : "text-muted-foreground"}`} />
@@ -29,8 +28,8 @@ export function AlertsPanel({ alerts }: AlertsPanelProps) {
         )}
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="space-y-1.5 pr-1" aria-live="assertive">
+      <div>
+        <div className="space-y-1.5" aria-live="assertive">
           {activeAlerts.length === 0 && recentInactive.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-6">
               <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center mb-2">
@@ -92,7 +91,7 @@ export function AlertsPanel({ alerts }: AlertsPanelProps) {
             </>
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
