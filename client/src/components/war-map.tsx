@@ -88,16 +88,18 @@ interface WarMapProps {
   isMobile?: boolean;
 }
 
-const TILE_LAYERS: Record<string, { url: string; label: string; attribution: string }> = {
+const TILE_LAYERS: Record<string, { url: string; label: string; attribution: string; subdomains?: string }> = {
   dark: {
     url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
     label: "Dark",
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: "abcd",
   },
   terrain: {
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     label: "Terrain",
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    subdomains: "abc",
   },
   satellite: {
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -154,7 +156,7 @@ export function WarMap({ events, alerts, isMobile = false }: WarMapProps) {
           key={mapStyle}
           url={TILE_LAYERS[mapStyle]?.url || TILE_LAYERS.dark.url}
           attribution={TILE_LAYERS[mapStyle]?.attribution}
-          subdomains="abcd"
+          {...(TILE_LAYERS[mapStyle]?.subdomains ? { subdomains: TILE_LAYERS[mapStyle].subdomains } : {})}
           maxZoom={19}
           eventHandlers={{
             tileerror: (e: any) => {
