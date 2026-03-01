@@ -183,13 +183,16 @@ export default function Dashboard() {
 
   const activeAlerts = (alerts || []).filter(a => a.active);
 
+  // Show informational banner when connected but no data has arrived yet
+  const noDataYet = wsStatus === "connected" && uniqueEvents.length === 0 && (news || []).length === 0 && activeAlerts.length === 0;
+
   // ─── MOBILE LAYOUT ───
   if (isMobile) {
     const tabContent = () => {
       switch (mobileTab) {
         case "map":
           return (
-            <div className="flex-1 relative min-h-0">
+            <div className="flex-1 relative min-h-0 h-full">
               <WarMap events={uniqueEvents} alerts={alerts || []} isMobile={true} />
               <div className="absolute bottom-0 left-0 right-0 z-[400]">
                 <NewsTicker news={news || []} />
@@ -286,6 +289,12 @@ export default function Dashboard() {
         />
         <KeyboardShortcuts onToggleMute={handleToggleMute} onTogglePresentation={handleTogglePresentation} />
 
+        {noDataYet && (
+          <div className="bg-yellow-500/10 border-b border-yellow-500/30 px-3 py-1.5 text-center">
+            <p className="text-[11px] text-yellow-400 font-medium">No live data yet — intelligence feeds are initializing</p>
+          </div>
+        )}
+
         {/* Tab content area — fills between header and tab bar */}
         <div id="main-content" className="flex-1 flex flex-col min-h-0 pb-14">{tabContent()}</div>
 
@@ -325,23 +334,26 @@ export default function Dashboard() {
     collapsed,
     onToggle,
     side,
+    label,
   }: {
     collapsed: boolean;
     onToggle: () => void;
     side: "left" | "right";
+    label?: string;
   }) => (
     <Button
       variant="ghost"
       size="icon"
       onClick={onToggle}
-      className={`absolute top-1/2 -translate-y-1/2 z-[600] h-6 w-6 rounded-full border border-border bg-card/90 shadow-md hover:bg-card ${
-        side === "left" ? "-left-3" : "-right-3"
+      title={collapsed ? `Show ${label || "panel"}` : `Hide ${label || "panel"}`}
+      className={`absolute top-1/2 -translate-y-1/2 z-[600] h-8 w-8 rounded-full border border-border bg-card/90 shadow-md hover:bg-card hover:border-primary/50 transition-colors ${
+        side === "left" ? "-left-4" : "-right-4"
       }`}
     >
       {side === "left" ? (
-        collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />
+        collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />
       ) : (
-        collapsed ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />
+        collapsed ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
       )}
     </Button>
   );
@@ -363,12 +375,18 @@ export default function Dashboard() {
       />
       <KeyboardShortcuts onToggleMute={handleToggleMute} onTogglePresentation={handleTogglePresentation} />
 
+      {noDataYet && (
+        <div className="bg-yellow-500/10 border-b border-yellow-500/30 px-3 py-1.5 text-center">
+          <p className="text-[11px] text-yellow-400 font-medium">No live data yet — intelligence feeds are initializing</p>
+        </div>
+      )}
+
       <div id="main-content" className="flex-1 flex min-h-0">
         {/* ─── Main center column (map + live media + ticker) ─── */}
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 flex min-h-0">
             {/* Map area */}
-            <div className="flex-1 min-w-0 relative">
+            <div className="flex-1 min-w-0 relative h-full">
               <WarMap events={uniqueEvents} alerts={alerts || []} isMobile={false} />
 
               {/* Presentation mode: floating stat badges */}
@@ -396,7 +414,7 @@ export default function Dashboard() {
             {/* Stats sidebar — only shown as separate column when viewport >= 1440 */}
             {isWide && (
               <div className="relative flex-shrink-0">
-                <CollapseBtn collapsed={statsCollapsed} onToggle={toggleStatsCollapsed} side="left" />
+                <CollapseBtn collapsed={statsCollapsed} onToggle={toggleStatsCollapsed} side="left" label="Stats" />
                 <div
                   className="border-l border-border flex flex-col min-h-0 bg-card/20 contain-layout transition-all duration-300 overflow-hidden"
                   style={{ width: statsCollapsed ? 0 : 320 }}
@@ -420,10 +438,24 @@ export default function Dashboard() {
 
         {/* ─── Right sidebar ─── */}
         <div className="relative flex-shrink-0">
-          <CollapseBtn collapsed={rightCollapsed} onToggle={toggleRightCollapsed} side="right" />
+          <CollapseBtn collapsed={rightCollapsed} onToggle={toggleRightCollapsed} side="right" label="Intel" />
+          {rightCollapsed ? (
+            /* Collapsed strip — visible affordance so users know content is hidden */
+            <div
+              className="border-l border-border bg-card/20 flex flex-col items-center justify-center cursor-pointer hover:bg-card/40 transition-colors"
+              style={{ width: 36 }}
+              onClick={toggleRightCollapsed}
+              title="Show Intel Panel"
+            >
+              <ChevronLeft className="w-4 h-4 text-muted-foreground mb-2" />
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-[0.15em] writing-mode-vertical" style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}>
+                Intel Panel
+              </span>
+            </div>
+          ) : (
           <div
             className="border-l border-border flex flex-col min-h-0 bg-card/10 contain-layout transition-all duration-300 overflow-hidden"
-            style={{ width: rightCollapsed ? 0 : 340 }}
+            style={{ width: 340 }}
           >
             <ScrollArea className="flex-1">
               <div className="flex flex-col min-h-0" style={{ width: 340 }}>
@@ -462,6 +494,7 @@ export default function Dashboard() {
               </div>
             </ScrollArea>
           </div>
+          )}
         </div>
       </div>
       <FeedbackDialog />

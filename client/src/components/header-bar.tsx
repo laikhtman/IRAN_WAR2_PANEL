@@ -96,10 +96,29 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
   );
 
   // Unified 4-state status indicator: LIVE / CONNECTED / RECONNECTING / OFFLINE
-  const connectionState: "live" | "connected" | "reconnecting" | "offline" =
+  // Debounce: suppress sub-second "offline" blips (e.g. from Dialog re-renders)
+  const rawState: "live" | "connected" | "reconnecting" | "offline" =
     wsStatus === "connected" && isLiveFeed ? "live" :
     wsStatus === "connected" ? "connected" :
     wsStatus === "reconnecting" ? "reconnecting" : "offline";
+
+  const [connectionState, setConnectionState] = useState(rawState);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // Immediately promote to better states; debounce downgrades
+    if (rawState === "live" || rawState === "connected" || (rawState === "reconnecting" && connectionState === "offline")) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      setConnectionState(rawState);
+    } else {
+      // Downgrade after 500ms to avoid flicker
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        setConnectionState(rawState);
+      }, 500);
+    }
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [rawState]);
 
   const statusConfig = {
     live:         { Icon: Activity, color: "text-emerald-400", dot: "bg-emerald-400 animate-pulse", label: t("header.live") },

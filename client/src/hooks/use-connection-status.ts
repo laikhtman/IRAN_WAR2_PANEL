@@ -11,16 +11,90 @@ interface ConnectionStatus {
 
 const STALE_THRESHOLD_MS = 120_000; // 2 minutes without data → stale
 
+// ─── Module-level WebSocket singleton ───
+// Keeps WS alive regardless of component mounts/unmounts (Dialog, tab switches, etc.)
+
+type Listener = (data: any) => void;
+type StatusListener = (status: WsStatus) => void;
+type FreshnessListener = (time: number) => void;
+
+interface WsSingleton {
+  ws: WebSocket | null;
+  status: WsStatus;
+  lastMessageTime: number | null;
+  messageListeners: Set<Listener>;
+  statusListeners: Set<StatusListener>;
+  freshnessListeners: Set<FreshnessListener>;
+  initialized: boolean;
+}
+
+const singleton: WsSingleton = {
+  ws: null,
+  status: "disconnected",
+  lastMessageTime: null,
+  messageListeners: new Set(),
+  statusListeners: new Set(),
+  freshnessListeners: new Set(),
+  initialized: false,
+};
+
+function setStatus(s: WsStatus) {
+  singleton.status = s;
+  singleton.statusListeners.forEach((fn) => fn(s));
+}
+
+function initWsSingleton() {
+  if (singleton.initialized) return;
+  singleton.initialized = true;
+
+  if (typeof window === "undefined") return;
+
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+  const connect = () => {
+    setStatus("reconnecting");
+
+    const ws = new WebSocket(wsUrl);
+    singleton.ws = ws;
+
+    ws.onopen = () => {
+      setStatus("connected");
+    };
+
+    ws.onmessage = (event) => {
+      const now = Date.now();
+      singleton.lastMessageTime = now;
+      singleton.freshnessListeners.forEach((fn) => fn(now));
+      try {
+        const data = JSON.parse(event.data);
+        singleton.messageListeners.forEach((fn) => fn(data));
+      } catch (_) {}
+    };
+
+    ws.onerror = () => {
+      // onclose will fire after this
+    };
+
+    ws.onclose = () => {
+      setStatus("disconnected");
+      setTimeout(connect, 3000);
+    };
+  };
+
+  connect();
+}
+
 /**
- * Hook that manages a WebSocket connection with auto-reconnect,
- * and exposes real-time connection / data-freshness status.
+ * Hook that subscribes to the module-level WebSocket singleton.
+ * Component mounts/unmounts do NOT affect the WebSocket connection.
  */
 export function useConnectionStatus(
   onMessage: (data: any) => void,
-): ConnectionStatus & { wsRef: React.RefObject<WebSocket | null> } {
+): ConnectionStatus & { wsRef: React.MutableRefObject<WebSocket | null> } {
   const wsRef = useRef<WebSocket | null>(null);
-  const [wsStatus, setWsStatus] = useState<WsStatus>("disconnected");
-  const [lastMessageTime, setLastMessageTime] = useState<number | null>(null);
+  const [wsStatus, setWsStatus] = useState<WsStatus>(singleton.status);
+  const [lastMessageTime, setLastMessageTime] = useState<number | null>(singleton.lastMessageTime);
   const [isDataFresh, setIsDataFresh] = useState(false);
   const onMessageRef = useRef(onMessage);
 
@@ -28,6 +102,48 @@ export function useConnectionStatus(
   useEffect(() => {
     onMessageRef.current = onMessage;
   }, [onMessage]);
+
+  // Initialize singleton once
+  useEffect(() => {
+    initWsSingleton();
+  }, []);
+
+  // Subscribe to singleton events
+  useEffect(() => {
+    const msgHandler: Listener = (data) => {
+      onMessageRef.current(data);
+    };
+    const statusHandler: StatusListener = (s) => {
+      setWsStatus(s);
+    };
+    const freshHandler: FreshnessListener = (time) => {
+      setLastMessageTime(time);
+      setIsDataFresh(true);
+    };
+
+    singleton.messageListeners.add(msgHandler);
+    singleton.statusListeners.add(statusHandler);
+    singleton.freshnessListeners.add(freshHandler);
+
+    // Sync current state on mount
+    setWsStatus(singleton.status);
+    if (singleton.lastMessageTime) {
+      setLastMessageTime(singleton.lastMessageTime);
+      setIsDataFresh(Date.now() - singleton.lastMessageTime < STALE_THRESHOLD_MS);
+    }
+    wsRef.current = singleton.ws;
+
+    return () => {
+      singleton.messageListeners.delete(msgHandler);
+      singleton.statusListeners.delete(statusHandler);
+      singleton.freshnessListeners.delete(freshHandler);
+    };
+  }, []);
+
+  // Keep wsRef current
+  useEffect(() => {
+    wsRef.current = singleton.ws;
+  }, [wsStatus]);
 
   // Freshness timer: check every 10s whether we've gone stale
   useEffect(() => {
@@ -38,56 +154,6 @@ export function useConnectionStatus(
     }, 10_000);
     return () => clearInterval(interval);
   }, [lastMessageTime]);
-
-  useEffect(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    let unmounted = false;
-    let reconnectTimeout: ReturnType<typeof setTimeout>;
-
-    const connect = () => {
-      if (unmounted) return;
-      setWsStatus("reconnecting");
-
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        if (!unmounted) setWsStatus("connected");
-      };
-
-      ws.onmessage = (event) => {
-        const now = Date.now();
-        setLastMessageTime(now);
-        setIsDataFresh(true);
-        try {
-          const data = JSON.parse(event.data);
-          onMessageRef.current(data);
-        } catch (_) {}
-      };
-
-      ws.onerror = () => {
-        // onclose will fire after this
-      };
-
-      ws.onclose = () => {
-        if (!unmounted) {
-          setWsStatus("disconnected");
-          reconnectTimeout = setTimeout(connect, 3000);
-        }
-      };
-    };
-
-    connect();
-
-    return () => {
-      unmounted = true;
-      clearTimeout(reconnectTimeout);
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
-  }, []);
 
   return { wsStatus, lastMessageTime, isDataFresh, wsRef };
 }
