@@ -66,7 +66,7 @@ export function serveStatic(app: Express) {
   );
 
   // SPA catch-all — inject SEO meta tags per language
-  app.use("*", (req, res) => {
+  app.use("/{*path}", (req, res) => {
     // Ignore API routes just in case they fell through
     if (req.originalUrl.startsWith("/api")) {
       return res.status(404).json({ error: "Not found" });
