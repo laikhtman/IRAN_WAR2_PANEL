@@ -13,7 +13,7 @@
 
 // ─── Domain ──────────────────────────────────────────────────────
 // Set via env var SEO_DOMAIN or change this fallback
-export const SEO_DOMAIN = process.env.SEO_DOMAIN || "warpanel.com";
+export const SEO_DOMAIN = process.env.SEO_DOMAIN || "intelhq.io";
 export const SEO_PROTOCOL = "https";
 export const BASE_URL = `${SEO_PROTOCOL}://${SEO_DOMAIN}`;
 
