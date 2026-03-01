@@ -2,8 +2,46 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
-import { Tv, Camera, X, Maximize2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Radio, RefreshCw, WifiOff } from "lucide-react";
+import { Tv, Camera, X, Maximize2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Radio, RefreshCw, WifiOff, ExternalLink } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+
+/** Derive a watchable YouTube URL from an embed URL */
+function getYouTubeWatchUrl(embedUrl: string): string | null {
+  try {
+    const url = new URL(embedUrl);
+    // Channel live stream: /embed/live_stream?channel=XXX
+    const channel = url.searchParams.get("channel");
+    if (channel) return `https://www.youtube.com/channel/${channel}/live`;
+    // Direct video ID: /embed/VIDEO_ID
+    const parts = url.pathname.split("/");
+    const videoId = parts[parts.length - 1];
+    if (videoId && videoId !== "embed" && videoId !== "live_stream") {
+      return `https://www.youtube.com/watch?v=${videoId}`;
+    }
+  } catch {}
+  return null;
+}
+
+/** Add origin param to embed URL for YouTube API compatibility */
+function withOrigin(embedUrl: string): string {
+  try {
+    const url = new URL(embedUrl);
+    // Always use youtube.com (not youtube-nocookie.com) for better embed compat
+    if (url.hostname === "www.youtube-nocookie.com") {
+      url.hostname = "www.youtube.com";
+    }
+    if (typeof window !== "undefined" && !url.searchParams.has("origin")) {
+      url.searchParams.set("origin", window.location.origin);
+    }
+    // Ensure enablejsapi for proper player init
+    if (!url.searchParams.has("enablejsapi")) {
+      url.searchParams.set("enablejsapi", "1");
+    }
+    return url.toString();
+  } catch {
+    return embedUrl;
+  }
+}
 
 /** Iframe wrapper with load-timeout detection + retry fallback */
 function StreamIframe({ src, className, sandbox, ...rest }: React.IframeHTMLAttributes<HTMLIFrameElement> & { src: string }) {
@@ -30,6 +68,7 @@ function StreamIframe({ src, className, sandbox, ...rest }: React.IframeHTMLAttr
   };
 
   if (loadState === "error") {
+    const watchUrl = getYouTubeWatchUrl(src);
     return (
       <div className={`${className} flex flex-col items-center justify-center gap-2 bg-black/80`}>
         <WifiOff className="w-6 h-6 text-muted-foreground/50" />
@@ -41,6 +80,17 @@ function StreamIframe({ src, className, sandbox, ...rest }: React.IframeHTMLAttr
           <RefreshCw className="w-3 h-3" />
           Retry
         </button>
+        {watchUrl && (
+          <a
+            href={watchUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" />
+            Watch on YouTube
+          </a>
+        )}
       </div>
     );
   }
@@ -457,7 +507,7 @@ export function LiveMediaPanel() {
                   <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
                     <StreamIframe
                       key={source.id}
-                      src={source.embedUrl}
+                      src={withOrigin(source.embedUrl)}
                       className="absolute inset-0 w-full h-full"
                       allow="autoplay; encrypted-media"
                       referrerPolicy="no-referrer"
@@ -521,7 +571,7 @@ export function LiveMediaPanel() {
             >
               <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
                 <StreamIframe
-                  src={source.embedUrl}
+                  src={withOrigin(source.embedUrl)}
                   className="absolute inset-0 w-full h-full"
                   allow="autoplay; encrypted-media"
                   referrerPolicy="no-referrer"
@@ -675,7 +725,7 @@ export function LiveMediaPanel() {
             </div>
             <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
               <StreamIframe
-                src={expandedStream.embedUrl}
+                src={withOrigin(expandedStream.embedUrl)}
                 className="absolute inset-0 w-full h-full"
                 allow="autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen

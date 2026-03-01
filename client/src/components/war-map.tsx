@@ -30,6 +30,20 @@ function MapUpdater() {
       map.setView([31.5, 45], 5);
       hasSetView.current = true;
     }
+    // Force Leaflet to re-measure container after flex layout paints
+    requestAnimationFrame(() => {
+      map.invalidateSize();
+    });
+    // Safety net for slow layout engines
+    const timer = setTimeout(() => map.invalidateSize(), 200);
+    return () => clearTimeout(timer);
+  }, [map]);
+
+  // Also re-measure on window resize (flex reflows)
+  useEffect(() => {
+    const onResize = () => map.invalidateSize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, [map]);
 
   return null;

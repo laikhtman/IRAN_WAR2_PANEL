@@ -265,7 +265,12 @@ export async function registerRoutes(
     });
   };
 
-  // No seed data — production uses only live data from fetchers
+  // Seed data — gated behind ENABLE_SEED_DATA env var for demo deployments
+  if (process.env.ENABLE_SEED_DATA === "true") {
+    const { seedIfEmpty } = await import("./seed");
+    await seedIfEmpty();
+  }
+
   setNewEventCallback(broadcast);
   startDataFetcher();
 
