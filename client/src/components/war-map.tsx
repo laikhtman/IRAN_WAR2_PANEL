@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { MapContainer, TileLayer, CircleMarker, Popup, ImageOverlay, useMap } from "react-leaflet";
-import { Maximize2, Home } from "lucide-react";
+import { Maximize2, Home, Layers, X, Map } from "lucide-react";
 import type { WarEvent, Alert, SatelliteImage } from "@shared/schema";
 import "leaflet/dist/leaflet.css";
 
@@ -71,15 +71,44 @@ function ResetViewButton() {
 interface WarMapProps {
   events: WarEvent[];
   alerts: Alert[];
+  isMobile?: boolean;
 }
 
-export function WarMap({ events, alerts }: WarMapProps) {
+const TILE_LAYERS: Record<string, { url: string; label: string; attribution?: string }> = {
+  dark: {
+    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    label: "Dark",
+  },
+  terrain: {
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    label: "Terrain",
+  },
+  satellite: {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    label: "Satellite",
+  },
+};
+
+function getStoredMapStyle(): string {
+  try { return localStorage.getItem("war-panel-map-style") || "dark"; } catch { return "dark"; }
+}
+
+export function WarMap({ events, alerts, isMobile = false }: WarMapProps) {
   const { t } = useTranslation();
   const [showSatellite, setShowSatellite] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(!isMobile);
+  const [mapStyle, setMapStyle] = useState(getStoredMapStyle);
   const { data: satelliteImages } = useQuery<SatelliteImage[]>({
     queryKey: ["/api/satellite-images"],
     refetchInterval: 120000,
   });
+
+  const cycleMapStyle = () => {
+    const styles = Object.keys(TILE_LAYERS);
+    const next = styles[(styles.indexOf(mapStyle) + 1) % styles.length];
+    setMapStyle(next);
+    try { localStorage.setItem("war-panel-map-style", next); } catch {}
+  };
 
   const eventLabelKeys: Record<string, string> = {
     missile_launch: "events.types.missile_launch",
@@ -98,21 +127,28 @@ export function WarMap({ events, alerts }: WarMapProps) {
         center={[31.5, 45]}
         zoom={5}
         className="w-full h-full"
-        zoomControl={true}
+        zoomControl={!isMobile}
         attributionControl={false}
         minZoom={3}
-        maxZoom={12}
+        maxZoom={isMobile ? 10 : 12}
         preferCanvas={true}
       >
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          key={mapStyle}
+          url={TILE_LAYERS[mapStyle]?.url || TILE_LAYERS.dark.url}
+          {...(isMobile ? { detectRetina: false } : {})}
         />
         <MapUpdater />
 
-        {/* Map control toolbar */}
-        <div className="absolute top-3 ltr:right-3 rtl:left-3 z-[1000] flex flex-col gap-1.5">
+        {/* Map control toolbar — bottom-right on mobile to avoid legend toggle conflict */}
+        <div className={`absolute z-[1000] flex flex-col gap-1.5 ${
+          isMobile ? "bottom-14 ltr:right-3 rtl:left-3" : "top-3 ltr:right-3 rtl:left-3"
+        }`}>
           <FitBoundsButton events={events} />
           <ResetViewButton />
+          <button onClick={cycleMapStyle} className={toolbarBtnClass} title={`Map: ${TILE_LAYERS[mapStyle]?.label || "Dark"}`}>
+            <Map className="w-4 h-4" />
+          </button>
         </div>
 
         {events.map((event) => {
@@ -193,30 +229,56 @@ export function WarMap({ events, alerts }: WarMapProps) {
         ))}
       </MapContainer>
 
-      <div className="absolute top-3 ltr:left-3 rtl:right-3 z-[1000] pointer-events-none contain-layout">
-        <div className="bg-card/90 backdrop-blur-sm border border-border rounded-md p-2.5">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground mb-2 font-semibold">{t("map.legend")}</p>
-          <div className="space-y-1">
-            {Object.keys(eventLabelKeys).map((key) => (
-              <div key={key} className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: eventColors[key] }} />
-                <span className="text-[11px] text-muted-foreground">{t(eventLabelKeys[key])}</span>
+      {/* Legend: collapsible on mobile, always-visible on desktop */}
+      {isMobile && !legendOpen && (
+        <button
+          onClick={() => setLegendOpen(true)}
+          className="absolute top-3 ltr:left-3 rtl:right-3 z-[1000] w-8 h-8 rounded-md bg-card/90 backdrop-blur-sm border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
+          title={t("map.legend")}
+        >
+          <Layers className="w-4 h-4" />
+        </button>
+      )}
+      {legendOpen && (
+        <div className="absolute top-3 ltr:left-3 rtl:right-3 z-[1000] pointer-events-none contain-layout">
+          <div className="bg-card/90 backdrop-blur-sm border border-border rounded-md p-2.5 pointer-events-auto max-h-[calc(100%-80px)] overflow-y-auto">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground font-semibold">{t("map.legend")}</p>
+              {isMobile && (
+                <button
+                  onClick={() => setLegendOpen(false)}
+                  className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors -me-1 -mt-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <div className="space-y-1">
+              {Object.keys(eventLabelKeys).map((key) => (
+                <div key={key} className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: eventColors[key] }} />
+                  <span className="text-[11px] text-muted-foreground">{t(eventLabelKeys[key])}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 pt-2 border-t border-border space-y-1">
+              <button
+                onClick={() => setShowSatellite(prev => !prev)}
+                className="flex items-center gap-2 w-full text-left hover:bg-muted/50 rounded px-1 py-0.5 transition-colors"
+              >
+                <span className={`text-[11px] ${showSatellite ? "text-emerald-400" : "text-muted-foreground"}`}>
+                  🛰 Sentinel Overlay
+                </span>
+                <span className={`w-1.5 h-1.5 rounded-full ${showSatellite ? "bg-emerald-400" : "bg-muted-foreground/30"}`} />
+              </button>
+              <div className="flex items-center gap-1">
+                <Map className="w-3 h-3 text-muted-foreground" />
+                <span className="text-[11px] text-muted-foreground">{TILE_LAYERS[mapStyle]?.label || "Dark"}</span>
               </div>
-            ))}
-          </div>
-          <div className="mt-2 pt-2 border-t border-border">
-            <button
-              onClick={() => setShowSatellite(prev => !prev)}
-              className="flex items-center gap-2 w-full text-left pointer-events-auto hover:bg-muted/50 rounded px-1 py-0.5 transition-colors"
-            >
-              <span className={`text-[11px] ${showSatellite ? "text-emerald-400" : "text-muted-foreground"}`}>
-                🛰 Satellite
-              </span>
-              <span className={`w-1.5 h-1.5 rounded-full ${showSatellite ? "bg-emerald-400" : "bg-muted-foreground/30"}`} />
-            </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="absolute bottom-3 ltr:left-3 rtl:right-3 z-[1000] pointer-events-none contain-layout">
         <div className="bg-card/80 backdrop-blur-sm border border-border rounded-md px-3 py-1.5">

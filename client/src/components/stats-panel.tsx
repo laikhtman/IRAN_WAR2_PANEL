@@ -8,6 +8,7 @@ import {
   Target,
   TrendingUp,
   Zap,
+  Info,
 } from "lucide-react";
 
 function AnimatedCounter({ value, label, icon: Icon, color }: {
@@ -100,6 +101,15 @@ export function StatsPanel({ stats }: StatsPanelProps) {
     );
   }
 
+  const allZero = stats.totalMissilesLaunched === 0 &&
+    stats.totalIntercepted === 0 &&
+    stats.totalHits === 0 &&
+    stats.totalDronesLaunched === 0;
+
+  const hasInterceptionData = (stats.totalMissilesLaunched + stats.totalDronesLaunched) > 0;
+  const hasBySystem = stats.bySystem && Object.keys(stats.bySystem).length > 0 &&
+    Object.values(stats.bySystem).some(v => v > 0);
+
   return (
     <div className="space-y-2 contain-layout" role="region" aria-label="Statistics panel" data-testid="stats-panel">
       <div className="flex items-center justify-between gap-1 mb-1">
@@ -110,6 +120,16 @@ export function StatsPanel({ stats }: StatsPanelProps) {
           {t("stats.live")}
         </Badge>
       </div>
+
+      {allZero && (
+        <div className="border border-border rounded-md p-3 bg-card/30 flex items-start gap-2">
+          <Info className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">{t("stats.noEvents")}</p>
+            <p className="text-[11px] text-muted-foreground/60 leading-relaxed mt-0.5">{t("stats.noEventsHint")}</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         <AnimatedCounter
@@ -147,7 +167,7 @@ export function StatsPanel({ stats }: StatsPanelProps) {
             </span>
           </div>
           <span className="text-xl font-bold font-mono text-emerald-400 tabular-nums">
-            {stats.interceptionRate}%
+            {hasInterceptionData ? `${stats.interceptionRate}%` : t("stats.notApplicable")}
           </span>
         </div>
       </div>
@@ -172,6 +192,7 @@ export function StatsPanel({ stats }: StatsPanelProps) {
         </div>
       </div>
 
+      {hasBySystem && (
       <div className="border border-border rounded-md p-3 bg-card/50">
         <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground font-semibold mb-2">
           {t("stats.defenseSystems")}
@@ -185,6 +206,7 @@ export function StatsPanel({ stats }: StatsPanelProps) {
           ))}
         </div>
       </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         <div className="border border-border rounded-md p-2.5 bg-card/50 text-center">

@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Radio, Wifi, WifiOff, Activity, Volume2, VolumeX, Maximize2, Minimize2, TrendingDown, TrendingUp, Minus, HeartPulse } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Radio, Wifi, WifiOff, Activity, Volume2, VolumeX, Maximize2, Minimize2, TrendingDown, TrendingUp, Minus, HeartPulse, MoreVertical } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Link } from "wouter";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { WsStatus } from "@/hooks/use-connection-status";
 
 interface HeaderBarProps {
@@ -21,12 +23,32 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
   const { t, i18n } = useTranslation();
   const [time, setTime] = useState(new Date());
   const [isNarrow, setIsNarrow] = useState(window.innerWidth < 1600);
+  const isMobile = useIsMobile();
+  const [mobileOverflow, setMobileOverflow] = useState(false);
+  const overflowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onResize = () => setIsNarrow(window.innerWidth < 1600);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  // Close overflow menu on outside click
+  useEffect(() => {
+    if (!mobileOverflow) return;
+    const handleClick = (e: MouseEvent | TouchEvent) => {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
+        setMobileOverflow(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("touchstart", handleClick);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("touchstart", handleClick);
+    };
+  }, [mobileOverflow]);
+
   const [israelTime, setIsraelTime] = useState("");
   const [tehranTime, setTehranTime] = useState("");
   const [localTimeStr, setLocalTimeStr] = useState("");
@@ -74,31 +96,28 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
     </div>
   );
 
-  const wsIndicator = (
-    <div className="flex items-center gap-1.5">
-      {wsStatus === "connected" ? (
-        <Wifi className="w-3 h-3 text-emerald-400" />
-      ) : (
-        <WifiOff className="w-3 h-3 text-red-400 animate-pulse" />
-      )}
-      <span className={`text-[11px] uppercase tracking-wider font-semibold ${
-        wsStatus === "connected" ? "text-emerald-400" :
-        wsStatus === "reconnecting" ? "text-yellow-400" : "text-red-400"
-      }`}>
-        {wsStatus === "connected" ? t("header.connected") :
-         wsStatus === "reconnecting" ? t("header.reconnecting") : t("header.disconnected")}
-      </span>
-    </div>
-  );
+  // Unified 4-state status indicator: LIVE / CONNECTED / RECONNECTING / OFFLINE
+  const connectionState: "live" | "connected" | "reconnecting" | "offline" =
+    wsStatus === "connected" && isLiveFeed ? "live" :
+    wsStatus === "connected" ? "connected" :
+    wsStatus === "reconnecting" ? "reconnecting" : "offline";
 
-  const liveFeedIndicator = (
+  const statusConfig = {
+    live:         { Icon: Activity, color: "text-emerald-400", dot: "bg-emerald-400 animate-pulse", label: t("header.live") },
+    connected:    { Icon: Wifi,     color: "text-yellow-400",  dot: "bg-yellow-400",                label: t("header.connectedAwaiting") },
+    reconnecting: { Icon: Wifi,     color: "text-yellow-400",  dot: "bg-yellow-400 animate-pulse",  label: t("header.reconnecting") },
+    offline:      { Icon: WifiOff,  color: "text-red-400",     dot: "bg-red-400 animate-pulse",     label: t("header.offline") },
+  } as const;
+
+  const { Icon: StatusIcon, color: statusColor, dot: statusDot, label: statusLabel } = statusConfig[connectionState];
+
+  const unifiedStatusIndicator = (
     <div className="flex items-center gap-1.5">
-      <Activity className={`w-3 h-3 ${isLiveFeed ? "text-primary" : "text-muted-foreground"}`} />
-      <span className={`text-[11px] uppercase tracking-wider font-semibold ${
-        isLiveFeed ? "text-primary" : "text-muted-foreground"
-      }`}>
-        {isLiveFeed ? t("header.liveFeed") : t("header.noData")}
+      <StatusIcon className={`w-3 h-3 ${statusColor}`} />
+      <span className={`text-[11px] uppercase tracking-wider font-semibold ${statusColor}`}>
+        {statusLabel}
       </span>
+      <span className={`w-1.5 h-1.5 rounded-full ${statusDot}`} />
     </div>
   );
 
@@ -142,25 +161,34 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
   ) : null;
 
   const sentimentIndicator = sentimentData && sentimentData.sampleSize > 0 ? (
-    <div className="flex items-center gap-1.5">
-      <div className="h-4 w-px bg-border" />
-      {sentimentData.trend === "escalating" ? (
-        <TrendingDown className="w-3 h-3 text-red-400" />
-      ) : sentimentData.trend === "de-escalating" ? (
-        <TrendingUp className="w-3 h-3 text-emerald-400" />
-      ) : (
-        <Minus className="w-3 h-3 text-yellow-400" />
-      )}
-      <span className={`text-[11px] uppercase tracking-wider font-semibold ${
-        sentimentData.trend === "escalating" ? "text-red-400" :
-        sentimentData.trend === "de-escalating" ? "text-emerald-400" : "text-yellow-400"
-      }`}>
-        {sentimentData.trend} ({sentimentData.average.toFixed(2)})
-      </span>
-      {sentimentData.trend === "escalating" && (
-        <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-      )}
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center gap-1.5 cursor-help">
+          <div className="h-4 w-px bg-border" />
+          {sentimentData.trend === "escalating" ? (
+            <TrendingDown className="w-3 h-3 text-red-400" />
+          ) : sentimentData.trend === "de-escalating" ? (
+            <TrendingUp className="w-3 h-3 text-emerald-400" />
+          ) : (
+            <Minus className="w-3 h-3 text-yellow-400" />
+          )}
+          <span className={`text-[11px] uppercase tracking-wider font-semibold ${
+            sentimentData.trend === "escalating" ? "text-red-400" :
+            sentimentData.trend === "de-escalating" ? "text-emerald-400" : "text-yellow-400"
+          }`}>
+            {sentimentData.trend} ({sentimentData.average.toFixed(2)})
+          </span>
+          {sentimentData.trend === "escalating" && (
+            <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+          )}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="text-xs max-w-[200px]">
+        <p className="font-semibold">Escalation Index: {sentimentData.average.toFixed(2)}</p>
+        <p className="text-muted-foreground">Based on {sentimentData.sampleSize} recent articles</p>
+        <p className="text-muted-foreground">Scale: 0 (calm) → 1 (critical)</p>
+      </TooltipContent>
+    </Tooltip>
   ) : null;
 
   const healthButton = (
@@ -203,13 +231,88 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
 
   const compactClocks = (
     <div className="flex items-center gap-2 text-[13px] font-mono tabular-nums">
+      <span className="text-[9px] text-muted-foreground mr-0.5">LCL</span>
       <span className="text-foreground">{localTimeStr}</span>
       <span className="text-muted-foreground">/</span>
-      <span className="text-cyan-400" title="Israel">{israelTime}</span>
+      <span className="text-[9px] text-muted-foreground mr-0.5">ISR</span>
+      <span className="text-cyan-400">{israelTime}</span>
       <span className="text-muted-foreground">/</span>
-      <span className="text-red-400" title="Tehran">{tehranTime}</span>
+      <span className="text-[9px] text-muted-foreground mr-0.5">THR</span>
+      <span className="text-red-400">{tehranTime}</span>
     </div>
   );
+
+  // ─── MOBILE HEADER: single ultra-compact 40px strip ───
+  if (isMobile) {
+    const statusDotColor = wsStatus === "connected" ? "bg-emerald-400" : wsStatus === "reconnecting" ? "bg-yellow-400 animate-pulse" : "bg-red-400 animate-pulse";
+    return (
+      <header className="flex items-center justify-between gap-1.5 px-3 h-10 border-b border-border bg-card/50 flex-shrink-0" data-testid="header-bar" aria-label="War Panel status bar">
+        {/* Left: logo + title + status dot */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <img src="/icons/logo-lion.svg" alt="War Panel" className="w-6 h-6 rounded-md flex-shrink-0" />
+          <span className="text-[12px] font-bold text-foreground tracking-[0.08em] uppercase truncate">
+            {t("header.title")}
+          </span>
+          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDotColor}`} />
+        </div>
+
+        {/* Right: mute + language + overflow */}
+        <div className="flex items-center gap-1 flex-shrink-0 relative" ref={overflowRef}>
+          {muteButton}
+          <LanguageSwitcher />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => setMobileOverflow(v => !v)}
+            title="More"
+          >
+            <MoreVertical className="w-3.5 h-3.5 text-muted-foreground" />
+          </Button>
+
+          {/* Overflow dropdown */}
+          {mobileOverflow && (
+            <div className="absolute end-0 top-full mt-1 z-[1200] w-[220px] bg-card border border-border rounded-md shadow-lg p-2 space-y-2">
+              {/* Connection status */}
+              <div className="flex items-center gap-2 px-1">
+                {unifiedStatusIndicator}
+              </div>
+              {/* Sentiment */}
+              {sentimentIndicator && (
+                <div className="flex items-center gap-2 px-1">
+                  {sentimentIndicator}
+                </div>
+              )}
+              {/* Date */}
+              <div className="flex items-center gap-2 px-1">
+                {dateBadge}
+              </div>
+              {/* Clocks */}
+              <div className="border-t border-border pt-2 px-1">
+                <div className="flex items-center justify-between text-[11px] tabular-nums">
+                  <span className="text-muted-foreground">{t("header.local")}</span>
+                  <span className="text-foreground font-bold">{localTimeStr}</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] tabular-nums">
+                  <span className="text-muted-foreground">{t("header.israelTime")}</span>
+                  <span className="text-cyan-400 font-bold">{israelTime}</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] tabular-nums">
+                  <span className="text-muted-foreground">{t("header.tehranTime")}</span>
+                  <span className="text-red-400 font-bold">{tehranTime}</span>
+                </div>
+              </div>
+              {/* Actions row */}
+              <div className="border-t border-border pt-2 flex items-center gap-2 px-1">
+                {presentationButton}
+                {healthButton}
+              </div>
+            </div>
+          )}
+        </div>
+      </header>
+    );
+  }
 
   if (isNarrow) {
     return (
@@ -219,8 +322,7 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
           <div className="flex items-center gap-3">
             {shieldTitle}
             <div className="h-4 w-px bg-border" />
-            {wsIndicator}
-            {liveFeedIndicator}
+            {unifiedStatusIndicator}
           </div>
           <div className="flex items-center gap-3">
             {dateBadge}
@@ -251,9 +353,7 @@ export function HeaderBar({ isMuted = true, onToggleMute, isPresentation = false
 
         <div className="h-4 w-px bg-border" />
 
-        {wsIndicator}
-
-        {liveFeedIndicator}
+        {unifiedStatusIndicator}
       </div>
 
       <div className="flex items-center gap-3">

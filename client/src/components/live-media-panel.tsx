@@ -1,7 +1,69 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
-import { Tv, Camera, X, Maximize2, ChevronDown, ChevronUp, Radio } from "lucide-react";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
+import { Tv, Camera, X, Maximize2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Radio, RefreshCw, WifiOff } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+/** Iframe wrapper with load-timeout detection + retry fallback */
+function StreamIframe({ src, className, sandbox, ...rest }: React.IframeHTMLAttributes<HTMLIFrameElement> & { src: string }) {
+  const [loadState, setLoadState] = useState<"loading" | "loaded" | "error">("loading");
+  const [retryKey, setRetryKey] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setLoadState("loading");
+    timerRef.current = setTimeout(() => {
+      setLoadState((s) => (s === "loading" ? "error" : s));
+    }, 15000);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [retryKey, src]);
+
+  const handleLoad = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setLoadState("loaded");
+  };
+
+  const handleError = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setLoadState("error");
+  };
+
+  if (loadState === "error") {
+    return (
+      <div className={`${className} flex flex-col items-center justify-center gap-2 bg-black/80`}>
+        <WifiOff className="w-6 h-6 text-muted-foreground/50" />
+        <p className="text-[11px] text-muted-foreground text-center px-4">Stream unavailable or blocked in your region</p>
+        <button
+          onClick={() => { setRetryKey((k) => k + 1); }}
+          className="flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-semibold bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-colors"
+        >
+          <RefreshCw className="w-3 h-3" />
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {loadState === "loading" && (
+        <div className={`${className} flex items-center justify-center bg-black/80`}>
+          <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        </div>
+      )}
+      <iframe
+        key={retryKey}
+        src={src}
+        className={`${className} ${loadState === "loading" ? "opacity-0 pointer-events-none" : ""}`}
+        onLoad={handleLoad}
+        onError={handleError}
+        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-without-user-activation"
+        {...rest}
+      />
+    </>
+  );
+}
 
 interface StreamSource {
   id: string;
@@ -24,7 +86,7 @@ const tvChannels: StreamSource[] = [
     category: "tv",
     country: "Israel",
     countryKey: "Israel",
-    embedUrl: "https://www.livehdtv.com/embed/kan-11-live/",
+    embedUrl: "https://www.youtube-nocookie.com/embed/live_stream?channel=UCa1-N3CzLICPd6BwAY4WI_A&autoplay=1&mute=1",
     language: "he",
     description: "Israeli Public Broadcasting",
     descriptionKey: "media.channels.kan11",
@@ -35,7 +97,7 @@ const tvChannels: StreamSource[] = [
     category: "tv",
     country: "Israel",
     countryKey: "Israel",
-    embedUrl: "https://www.livehdtv.com/embed/channel-12-live-stream-from-israel/",
+    embedUrl: "https://www.youtube-nocookie.com/embed/live_stream?channel=UC3Lx0QcdkGRTFCnsvGJRMXg&autoplay=1&mute=1",
     language: "he",
     description: "Keshet 12 News",
     descriptionKey: "media.channels.channel12",
@@ -46,7 +108,7 @@ const tvChannels: StreamSource[] = [
     category: "tv",
     country: "Israel",
     countryKey: "Israel",
-    embedUrl: "https://www.livehdtv.com/embed/channel-13-live/",
+    embedUrl: "https://www.youtube-nocookie.com/embed/live_stream?channel=UCDGSmruaSbIaJsR9Fm6V-tg&autoplay=1&mute=1",
     language: "he",
     description: "Reshet 13 News",
     descriptionKey: "media.channels.channel13",
@@ -57,7 +119,7 @@ const tvChannels: StreamSource[] = [
     category: "tv",
     country: "Israel",
     countryKey: "Israel",
-    embedUrl: "https://www.livehdtv.com/embed/channel-14-isreal-live/",
+    embedUrl: "https://www.youtube-nocookie.com/embed/live_stream?channel=UCRd_3DhFAaRKxP5TJwPbqSQ&autoplay=1&mute=1",
     language: "he",
     description: "Now 14",
     descriptionKey: "media.channels.channel14",
@@ -68,7 +130,7 @@ const tvChannels: StreamSource[] = [
     category: "tv",
     country: "Israel",
     countryKey: "Israel",
-    embedUrl: "https://www.livehdtv.com/embed/i24news-live-stream-israel/",
+    embedUrl: "https://www.youtube-nocookie.com/embed/live_stream?channel=UCMdGPato0IC5-MU5i_ZRXNQ&autoplay=1&mute=1",
     language: "en",
     description: "International news from Israel",
     descriptionKey: "media.channels.i24news",
@@ -179,13 +241,22 @@ const liveCameras: StreamSource[] = [
 
 export function LiveMediaPanel() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [expandedStream, setExpandedStream] = useState<StreamSource | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>(["kan11", "aljazeera", "cam-jerusalem", "cam-telaviv"]);
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [carouselIndex, setCarouselIndex] = useState(0);
 
   const allSources = [...tvChannels, ...liveCameras];
   const selectedStreams = allSources.filter((s) => selectedIds.includes(s.id));
+
+  // Keep carousel index in bounds when selection changes
+  useEffect(() => {
+    if (carouselIndex >= selectedStreams.length) {
+      setCarouselIndex(Math.max(0, selectedStreams.length - 1));
+    }
+  }, [selectedStreams.length, carouselIndex]);
 
   const toggleSelection = (id: string) => {
     setSelectedIds((prev) => {
@@ -200,6 +271,23 @@ export function LiveMediaPanel() {
   };
 
   const closeModal = useCallback(() => setExpandedStream(null), []);
+  const selectorRef = useRef<HTMLDivElement>(null);
+
+  // Close channel selector on outside click
+  useEffect(() => {
+    if (!selectorOpen) return;
+    const handleOutside = (e: MouseEvent | TouchEvent) => {
+      if (selectorRef.current && !selectorRef.current.contains(e.target as Node)) {
+        setSelectorOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("touchstart", handleOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("touchstart", handleOutside);
+    };
+  }, [selectorOpen]);
 
   useEffect(() => {
     if (!expandedStream) return;
@@ -248,7 +336,7 @@ export function LiveMediaPanel() {
             {selectedStreams.length}/4 {t("media.live")}
           </Badge>
 
-          <div className="relative">
+          <div className="relative" ref={selectorRef}>
             <button
               onClick={() => setSelectorOpen((v) => !v)}
               className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wider bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 transition-colors"
@@ -258,8 +346,8 @@ export function LiveMediaPanel() {
               {selectorOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
 
-            {selectorOpen && (
-              <div className="absolute end-0 top-full mt-1 z-50 w-[260px] max-h-[320px] overflow-y-auto bg-card border border-border rounded-md shadow-lg p-1.5" data-testid="media-selector-dropdown">
+            {selectorOpen && !isMobile && (
+              <div className="absolute end-0 top-full mt-1 z-[1100] w-[260px] max-h-[320px] overflow-y-auto bg-card border border-border rounded-md shadow-lg p-1.5" data-testid="media-selector-dropdown">
                 <p className="text-[11px] text-muted-foreground uppercase tracking-wider px-1.5 py-1">
                   {t("media.selectUpTo3")}
                 </p>
@@ -346,7 +434,85 @@ export function LiveMediaPanel() {
         </div>
 
         {/* Selected channel previews — live iframes */}
-        <div className="grid grid-cols-2 gap-2 p-2">
+        {isMobile ? (
+          /* ─── MOBILE: Single-stream carousel ─── */
+          <div className="relative">
+            {selectedStreams.length > 0 && (() => {
+              const source = selectedStreams[carouselIndex];
+              return (
+                <div className="relative">
+                  {/* Channel pill */}
+                  <div className="flex items-center justify-center gap-2 py-1.5 px-3">
+                    {source.category === "tv" ? (
+                      <Tv className="w-3 h-3 text-blue-400" />
+                    ) : (
+                      <Camera className="w-3 h-3 text-purple-400" />
+                    )}
+                    <span className="text-[11px] font-bold text-foreground">{source.name}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      — {t(`countries.${source.countryKey}`, source.country)}
+                    </span>
+                  </div>
+                  {/* Video player */}
+                  <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+                    <StreamIframe
+                      key={source.id}
+                      src={source.embedUrl}
+                      className="absolute inset-0 w-full h-full"
+                      allow="autoplay; encrypted-media"
+                      referrerPolicy="no-referrer"
+                      loading="lazy"
+                    />
+                  </div>
+                  {/* Prev / Next arrows */}
+                  {selectedStreams.length > 1 && (
+                    <>
+                      <button
+                        onClick={() => setCarouselIndex((i) => (i - 1 + selectedStreams.length) % selectedStreams.length)}
+                        className="absolute left-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/60 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+                        aria-label="Previous channel"
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => setCarouselIndex((i) => (i + 1) % selectedStreams.length)}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/60 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+                        aria-label="Next channel"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
+                  {/* Expand button on mobile */}
+                  <button
+                    onClick={() => setExpandedStream(source)}
+                    className="absolute bottom-2 right-2 z-10 w-8 h-8 rounded-md bg-black/60 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+                    aria-label="Expand"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })()}
+            {/* Dot indicators */}
+            {selectedStreams.length > 1 && (
+              <div className="flex items-center justify-center gap-1.5 py-2">
+                {selectedStreams.map((s, i) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setCarouselIndex(i)}
+                    className={`w-2 h-2 rounded-full transition-colors ${
+                      i === carouselIndex ? "bg-primary" : "bg-muted-foreground/30"
+                    }`}
+                    aria-label={s.name}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* ─── DESKTOP: 2×2 grid ─── */
+          <div className="grid grid-cols-2 gap-2 p-2">
           {selectedStreams.map((source) => (
             <div
               key={source.id}
@@ -354,12 +520,11 @@ export function LiveMediaPanel() {
               data-testid={`media-preview-${source.id}`}
             >
               <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-                <iframe
+                <StreamIframe
                   src={source.embedUrl}
                   className="absolute inset-0 w-full h-full"
                   allow="autoplay; encrypted-media"
                   referrerPolicy="no-referrer"
-                  sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
                   loading="lazy"
                 />
               </div>
@@ -384,8 +549,92 @@ export function LiveMediaPanel() {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        )}
       </div>
+
+      {/* ─── MOBILE: Channel selector as bottom-sheet Drawer ─── */}
+      {isMobile && (
+        <Drawer open={selectorOpen} onOpenChange={setSelectorOpen}>
+          <DrawerContent className="max-h-[70vh]">
+            <DrawerHeader className="pb-2">
+              <DrawerTitle className="text-sm uppercase tracking-wider">{t("media.selectChannels")}</DrawerTitle>
+            </DrawerHeader>
+            <div className="overflow-y-auto px-4 pb-6 space-y-1">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wider px-1 pb-2">
+                {t("media.selectUpTo3")}
+              </p>
+
+              {/* TV Channels */}
+              <div className="flex items-center gap-1.5 px-1 pt-2 pb-1">
+                <Tv className="w-3.5 h-3.5 text-blue-400" />
+                <span className="text-[12px] font-bold text-blue-400 uppercase tracking-wider">{t("media.tvChannels")}</span>
+              </div>
+              {tvChannels.map((source) => {
+                const isSelected = selectedIds.includes(source.id);
+                const isDisabled = !isSelected && selectedIds.length >= 4;
+                return (
+                  <button
+                    key={source.id}
+                    onClick={() => toggleSelection(source.id)}
+                    disabled={isDisabled}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-start transition-colors min-h-[48px] ${
+                      isSelected
+                        ? "bg-primary/15 text-primary"
+                        : isDisabled
+                        ? "text-muted-foreground/40 cursor-not-allowed"
+                        : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                      isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"
+                    }`}>
+                      {isSelected && <span className="text-[12px] text-primary-foreground font-bold">✓</span>}
+                    </div>
+                    <span className="text-[13px] font-medium truncate">{source.name}</span>
+                    {source.language !== "none" && (
+                      <Badge variant="outline" className="text-[11px] px-1.5 py-0 ms-auto flex-shrink-0 no-default-hover-elevate no-default-active-elevate">
+                        {source.language.toUpperCase()}
+                      </Badge>
+                    )}
+                  </button>
+                );
+              })}
+
+              {/* Live Cameras */}
+              <div className="flex items-center gap-1.5 px-1 pt-4 pb-1 border-t border-border/50 mt-2">
+                <Camera className="w-3.5 h-3.5 text-purple-400" />
+                <span className="text-[12px] font-bold text-purple-400 uppercase tracking-wider">{t("media.liveCameras")}</span>
+              </div>
+              {liveCameras.map((source) => {
+                const isSelected = selectedIds.includes(source.id);
+                const isDisabled = !isSelected && selectedIds.length >= 4;
+                return (
+                  <button
+                    key={source.id}
+                    onClick={() => toggleSelection(source.id)}
+                    disabled={isDisabled}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-start transition-colors min-h-[48px] ${
+                      isSelected
+                        ? "bg-primary/15 text-primary"
+                        : isDisabled
+                        ? "text-muted-foreground/40 cursor-not-allowed"
+                        : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                      isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"
+                    }`}>
+                      {isSelected && <span className="text-[12px] text-primary-foreground font-bold">✓</span>}
+                    </div>
+                    <span className="text-[13px] font-medium truncate">{source.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </DrawerContent>
+        </Drawer>
+      )}
 
       {expandedStream && (
         <div
@@ -425,13 +674,12 @@ export function LiveMediaPanel() {
               </button>
             </div>
             <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-              <iframe
+              <StreamIframe
                 src={expandedStream.embedUrl}
                 className="absolute inset-0 w-full h-full"
                 allow="autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen
                 referrerPolicy="no-referrer"
-                sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
                 loading="lazy"
                 data-testid="media-player-iframe"
               />

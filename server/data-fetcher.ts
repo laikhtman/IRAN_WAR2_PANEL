@@ -152,7 +152,30 @@ function getCityCoords(city: string): { lat: number; lng: number } {
 }
 
 // ─── 1. Pikud HaOref (Home Front Command) Alerts ──────────────────────────
+// Dedup: track recently alerted cities to avoid re-inserting within 5 minutes
+const recentOrefCities = new Map<string, number>(); // city -> timestamp ms
+const OREF_DEDUP_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+const OREF_ALERT_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
+
+async function expireOldAlerts(): Promise<void> {
+  try {
+    const cutoff = new Date(Date.now() - OREF_ALERT_EXPIRY_MS).toISOString();
+    await storage.expireAlertsBefore(cutoff);
+  } catch (err: any) {
+    console.error("[oref-alerts] Error expiring old alerts:", err.message);
+  }
+}
+
 async function fetchOrefAlerts(): Promise<void> {
+  // Expire stale alerts each polling cycle
+  await expireOldAlerts();
+
+  // Prune dedup map of stale entries
+  const now = Date.now();
+  recentOrefCities.forEach((ts, city) => {
+    if (now - ts > OREF_DEDUP_WINDOW_MS) recentOrefCities.delete(city);
+  });
+
   try {
     const response = await fetchViaProxy("https://www.oref.org.il/WarningMessages/alert/alerts.json");
     const text = await response.text();
@@ -174,6 +197,10 @@ async function fetchOrefAlerts(): Promise<void> {
       const newEvents: WarEvent[] = [];
 
       for (const city of cities) {
+        // Dedup: skip if this city was already alerted within the window
+        if (recentOrefCities.has(city)) continue;
+        recentOrefCities.set(city, Date.now());
+
         const coords = getCityCoords(city);
         const alertId = randomUUID();
         const timestamp = new Date().toISOString();
@@ -469,11 +496,35 @@ async function refreshAISummary(): Promise<void> {
     const recentEvents = (await storage.getEvents()).slice(0, 15);
     const recentNews = (await storage.getNews()).slice(0, 10);
 
+    // If no data at all, store a static "no data" summary instead of calling GPT
+    if (recentEvents.length === 0 && recentNews.length === 0) {
+      const noDataSummary: AISummary = {
+        summary: "No events or news items have been ingested yet. The intelligence dashboard is active and monitoring all configured data sources. Analysis will be generated automatically once data becomes available.",
+        threatAssessment: "low",
+        keyPoints: [
+          "Dashboard is online and monitoring all sources",
+          "No conflict events detected in the current window",
+          "Data sources are being polled at configured intervals",
+        ],
+        lastUpdated: new Date().toISOString(),
+        recommendation: "No action required. Continue monitoring. The system will alert automatically when events are detected.",
+      };
+      await storage.setAISummary(noDataSummary);
+      console.log("[ai-summary] No data available — stored static summary");
+      return;
+    }
+
     const systemPrompt = `You are a military intelligence analyst monitoring the Iran-Israel conflict. Given the following war events and news items, produce a JSON object with exactly these fields:
 - "summary": string (2-3 paragraph situation assessment)
 - "threatAssessment": one of "critical", "high", "medium", "low"
 - "keyPoints": array of 4-6 short strings summarizing key developments
 - "recommendation": string (actionable recommendation for civilians)
+
+IMPORTANT RULES:
+- Base your analysis ONLY on the provided events and news items below.
+- Do NOT fabricate, invent, or assume events that are not listed in the data.
+- If data is sparse, acknowledge the limited information rather than speculating.
+- Reference specific event types, locations, and timestamps from the provided data.
 
 Respond ONLY with valid JSON. No markdown, no code fences.`;
 
@@ -940,6 +991,17 @@ const intervals: ReturnType<typeof setInterval>[] = [];
 
 export function startDataFetcher(): void {
   console.log("[data-fetcher] Starting background data fetcher...");
+
+  // ── Startup health summary ──────────────────────────────────────────
+  console.log("[data-fetcher] ─── Data Source Health Summary ───");
+  for (const source of dataSources) {
+    const missingVars = (source.requiredEnvVars || []).filter(v => !process.env[v]);
+    const configured = missingVars.length === 0;
+    const statusTag = !source.enabled ? "DISABLED" : configured ? "READY" : "MISSING ENV";
+    const envNote = missingVars.length > 0 ? ` (need: ${missingVars.join(", ")})` : "";
+    console.log(`[data-fetcher]   ${source.name.padEnd(16)} [${statusTag}]${envNote}`);
+  }
+  console.log("[data-fetcher] ─────────────────────────────────");
 
   for (const source of dataSources) {
     if (!source.enabled) {
